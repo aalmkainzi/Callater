@@ -16,8 +16,8 @@ __VA_OPT__( \
 ) \
 IfNoVargs(InvokeLater(func, timeOrArg), __VA_ARGS__)
 
-void InvokeLaterArg(void(*func)(void*), void *arg, float delay);
-void InvokeLater(void(*func)(), float delay);
+void InvokeLaterArg(void(*func)(void*), void *arg, double delay);
+void InvokeLater(void(*func)(), double delay);
 void CallaterUpdate();
 void CallaterInit();
 

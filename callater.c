@@ -16,21 +16,21 @@ typedef struct FuncsToCall
     size_t count;
     void(**funcs)(void*);
     void** args;
-    float* times;
+    double* times;
 } FuncsToCall;
 
 FuncsToCall table;
-float lastUpdated;
+double lastUpdated;
 
-float CallaterCurrentTime()
+double CallaterCurrentTime()
 {
 #ifdef _WIN32
-    return GetTickCount64() / 1000.0f;
+    return GetTickCount64() / 1000.0;
 #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
 
-    return ts.tv_sec + ts.tv_nsec / 1000000000.0f;
+    return ts.tv_sec + ts.tv_nsec / 1000000000.0;
 #endif
 }
 
@@ -56,7 +56,7 @@ static void MaybeGrowTable()
     }
 }
 
-static void InsertFunc(void(*func)(void*), void* arg, float delay)
+static void InsertFunc(void(*func)(void*), void* arg, double delay)
 {
     MaybeGrowTable();
     table.funcs[table.count] = func;
@@ -78,8 +78,8 @@ static void CallAndPop(size_t idx)
 
 void CallaterUpdate()
 {
-    float currentTime = CallaterCurrentTime();
-    float deltaTime = currentTime - lastUpdated;
+    double currentTime = CallaterCurrentTime();
+    double deltaTime = currentTime - lastUpdated;
     lastUpdated = currentTime;
 
     for (size_t i = 0; i < table.count; i++)
@@ -91,19 +91,23 @@ void CallaterUpdate()
     size_t remaining = table.count % 8;
 
     __m256 zero = { 0 };
+    __m256 deltaVec = {
+        deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime
+    };
+    
     size_t i;
     for (i = 0; i < per8; i++)
     {
-        __m256 floats;
-        memcpy(&floats, table.times + (i * 16), sizeof(__m256));
-        __m256 results = _mm256_cmp_ps(zero, zero, _CMP_LE_OS);
-        int32_t* asInts = (int32_t*)&results;
-
+        const size_t curVecIdx = i * 8;
+        *(__m256*)(table.times + curVecIdx) = _mm256_sub_ps (*(__m256*)(table.times + curVecIdx), deltaVec);
+        
+        __m256 results = _mm256_cmp_ps  (*(__m256*)(table.times + curVecIdx), zero, _CMP_LE_OS);
+        
         for (int j = 0; j < 8; j++)
         {
-            if (asInts[j])
+            if (results[j])
             {
-                CallAndPop(i * 8 + j);
+                CallAndPop(curVecIdx + j);
             }
         }
     }
@@ -117,12 +121,12 @@ void CallaterUpdate()
     }
 }
 
-void InvokeLaterArg(void(*func)(void*), void* arg, float delay)
+void InvokeLaterArg(void(*func)(void*), void* arg, double delay)
 {
     InsertFunc(func, arg, delay);
 }
 
-void InvokeLater(void(*func)(), float delay)
+void InvokeLater(void(*func)(), double delay)
 {
     InsertFunc(func, NULL, delay);
 }
