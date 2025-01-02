@@ -1,6 +1,9 @@
 #include "callater.h"
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+#include <stdint.h>
+#include <immintrin.h>
 
 typedef struct FuncsToCall
 {
@@ -18,7 +21,7 @@ float GetCurrentTime()
 {
     struct timespec ts;
     #ifdef __MINGW32__
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+    clock_gettime(CLOCK_REALTIME, &ts);
     #else
     timespec_get(&ts, 1);
     #endif
@@ -56,7 +59,7 @@ static void InsertFunc(void(*func)(void*), void *arg, float delay)
     table.count += 1;
 }
 
-static void CallFunc(size_t idx)
+static void CallAndPop(size_t idx)
 {
     table.funcs[idx](table.args[idx]);
 
@@ -69,18 +72,41 @@ static void CallFunc(size_t idx)
 
 void CallaterUpdate()
 {
-    float timeSinceLastUpdate = GetCurrentTime() - lastUpdated;
-
+    float currentTime = GetCurrentTime();
+    float deltaTime = currentTime - lastUpdated;
+    lastUpdated = currentTime;
+    
     for(size_t i = 0 ; i < table.count ; i++)
     {
-        table.times[i] -= timeSinceLastUpdate;
+        table.times[i] -= deltaTime;
     }
-
-    for(size_t i = 0 ; i < table.count ; i++)
+    
+    size_t per8 = table.count / 8;
+    size_t remaining = table.count % 8;
+    
+    __m256 zero = {0};
+    size_t i;
+    for(i = 0 ; i < per8 ; i++)
     {
-        if(table.times[i] <= 0)
+        __m256 floats;
+        memcpy(&floats, table.times + (i * 16), sizeof(__m256));
+        __m256 results = _mm256_cmp_ps (zero, zero, _CMP_LE_OS);
+        int32_t *asInts = (int32_t*)&results;
+        
+        for(int j = 0 ; j < 8 ; j++)
         {
-            CallFunc(i);
+            if(asInts[j])
+            {
+                CallAndPop(i * 8 + j);
+            }
+        }
+    }
+    
+    for(size_t j = i ; j < table.count ; j++)
+    {
+        if(table.times[j] <= 0)
+        {
+            CallAndPop(j);
         }
     }
 }
