@@ -1,7 +1,6 @@
 #include "callater.h"
 #include <stdlib.h>
 #include <time.h>
-#include <string.h>
 #include <stdint.h>
 #include <immintrin.h>
 
@@ -16,8 +15,9 @@ typedef struct CallaterTable
     size_t count;
     void(**funcs)(void*);
     void** args;
-    float* times;
+    float* delays;
     float lastUpdated;
+    unsigned char delaysPtrOffset;
 } CallaterTable;
 
 static CallaterTable table;
@@ -34,15 +34,31 @@ float CallaterCurrentTime()
     #endif
 }
 
+static void *CallaterAlignedAlloc(size_t size, unsigned char alignment, unsigned char *offset)
+{
+    void *ret = calloc(size + (alignment - 1), 1);
+    void *aligned = (void*)(((uintptr_t)ret + (alignment - 1)) & ~(alignment - 1));
+    *offset = (char*)aligned - (char*)ret;
+    return aligned;
+}
+
+static void *CallaterAlignedRealloc(void *ptr, size_t size, unsigned char alignment, unsigned char *offset)
+{
+    void *ret = realloc((unsigned char*)ptr - *offset, size + (alignment - 1));
+    void *aligned = (void*)(((uintptr_t)ret + (alignment - 1)) & ~(alignment - 1));
+    *offset = (char*)aligned - (char*)ret;
+    return aligned;
+}
+
 void CallaterInit()
 {
     table.lastUpdated = CallaterCurrentTime();
     
     table.count = 0;
-    table.cap = 64;
-    table.funcs = calloc(table.cap, sizeof(*table.funcs));
-    table.args  = calloc(table.cap, sizeof(*table.args));
-    table.times = calloc(table.cap, sizeof(*table.times));
+    table.cap   = 64;
+    table.funcs  = calloc(table.cap, sizeof(*table.funcs));
+    table.args   = calloc(table.cap, sizeof(*table.args));
+    table.delays = CallaterAlignedAlloc(table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
 }
 
 static void CallaterNoop(void* arg)
@@ -52,9 +68,9 @@ static void CallaterNoop(void* arg)
 
 static void CallaterPopFunc(size_t idx)
 {
-    table.funcs[idx] = table.funcs[table.count - 1];
-    table.times[idx] = table.times[table.count - 1];
-    table.args[idx] = table.args[table.count - 1];
+    table.funcs[idx]  = table.funcs[table.count - 1];
+    table.delays[idx] = table.delays[table.count - 1];
+    table.args[idx]   = table.args[table.count - 1];
     
     table.count -= 1;
 }
@@ -73,9 +89,9 @@ static void CallaterMaybeGrowTable()
     if (table.cap <= table.count)
     {
         table.cap *= 2;
-        table.funcs = realloc(table.funcs, table.cap * sizeof(*table.funcs));
-        table.args  = realloc(table.args,  table.cap * sizeof(*table.args));
-        table.times = realloc(table.times, table.cap * sizeof(*table.times));
+        table.funcs  = realloc(table.funcs,  table.cap * sizeof(*table.funcs));
+        table.args   = realloc(table.args,   table.cap * sizeof(*table.args));
+        table.delays = CallaterAlignedRealloc(table.delays, table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
     }
 }
 
@@ -83,7 +99,7 @@ static void CallaterInsertFunc(void(*func)(void*), void* arg, float delay)
 {
     CallaterMaybeGrowTable();
     table.funcs[table.count] = func;
-    table.times[table.count] = delay;
+    table.delays[table.count] = delay;
     table.args[table.count] = arg;
     table.count += 1;
     
@@ -99,15 +115,15 @@ static void CallaterCallFunc(size_t idx)
 
 void CallaterUpdate()
 {
-    float currentTime = CallaterCurrentTime();
-    float deltaTime = currentTime - table.lastUpdated;
+    const float currentTime = CallaterCurrentTime();
+    const float deltaTime = currentTime - table.lastUpdated;
     table.lastUpdated = currentTime;
     
-    size_t per8 = table.count / 8;
-    size_t remaining = table.count % 8;
+    const size_t per8 = table.count / 8;
+    const int remaining = table.count % 8;
     
-    __m256 zero = { 0 };
-    __m256 deltaVec = {
+    const __m256 zero = { 0 };
+    const __m256 deltaVec = {
         deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime
     };
     
@@ -115,8 +131,8 @@ void CallaterUpdate()
     for (i = 0; i < per8; i++)
     {
         const size_t curVecIdx = i * 8;
-        *(__m256*)(table.times + curVecIdx) = _mm256_sub_ps(*(__m256*)(table.times + curVecIdx), deltaVec);
-        __m256 results = _mm256_cmp_ps(*(__m256*)(table.times + curVecIdx), zero, _CMP_LE_OS);
+        *(__m256*)(table.delays + curVecIdx) = _mm256_sub_ps(*(__m256*)(table.delays + curVecIdx), deltaVec);
+        __m256 results = _mm256_cmp_ps(*(__m256*)(table.delays + curVecIdx), zero, _CMP_LE_OS);
         const int(*asInts)[8] = (void*)&results;
         for (int j = 0; j < 8; j++)
         {
@@ -127,12 +143,14 @@ void CallaterUpdate()
         }
     }
     
-    for (size_t j = i * 8; j < table.count; j++)
+    const size_t remainingIndex = i * 8;
+    
+    for(int j = 0 ; j < remaining ; j++)
     {
-        table.times[j] -= deltaTime;
-        if (table.times[j] <= 0)
+        table.delays[j + remainingIndex] -= deltaTime;
+        if (table.delays[j + remainingIndex] <= 0)
         {
-            CallaterCallFunc(j);
+            CallaterCallFunc(j + remainingIndex);
         }
     }
 }
