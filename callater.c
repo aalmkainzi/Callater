@@ -1,7 +1,9 @@
 #include "callater.h"
+#include <math.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
+#include <string.h>
 #include <immintrin.h>
 
 #ifdef _WIN32
@@ -42,11 +44,21 @@ static void *CallaterAlignedAlloc(size_t size, unsigned char alignment, unsigned
     return aligned;
 }
 
-static void *CallaterAlignedRealloc(void *ptr, size_t size, unsigned char alignment, unsigned char *offset)
+static unsigned char ucmin(unsigned char a, unsigned char b)
+{
+    return a < b ? a : b;
+}
+
+static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsigned char alignment, unsigned char *offset)
 {
     void *ret = realloc((unsigned char*)ptr - *offset, size + (alignment - 1));
     void *aligned = (void*)(((uintptr_t)ret + (alignment - 1)) & ~(alignment - 1));
-    *offset = (char*)aligned - (char*)ret;
+    unsigned char newOffset = (char*)aligned - (char*)ret;
+    
+    if(newOffset != *offset)
+        memmove(aligned, ret + *offset, ucmin(size, oldSize));
+    
+    *offset = newOffset;
     return aligned;
 }
 
@@ -77,7 +89,7 @@ static void CallaterPopFunc(size_t idx)
 
 static void CallaterCleanupTable()
 {
-    for (size_t i = 0; i < table.count; i++)
+    for(size_t i = 0 ; i < table.count ; i++)
     {
         if (table.funcs[i] == CallaterNoop)
             CallaterPopFunc(i);
@@ -88,10 +100,11 @@ static void CallaterMaybeGrowTable()
 {
     if (table.cap <= table.count)
     {
-        table.cap *= 2;
-        table.funcs  = realloc(table.funcs,  table.cap * sizeof(*table.funcs));
-        table.args   = realloc(table.args,   table.cap * sizeof(*table.args));
-        table.delays = CallaterAlignedRealloc(table.delays, table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
+        const size_t newCap = table.cap * 2;
+        table.funcs  = realloc(table.funcs,  newCap * sizeof(*table.funcs));
+        table.args   = realloc(table.args,   newCap * sizeof(*table.args));
+        table.delays = CallaterAlignedRealloc(table.delays, newCap * sizeof(*table.delays), table.cap, 32, &table.delaysPtrOffset);
+        table.cap = newCap;
     }
 }
 
@@ -111,6 +124,7 @@ static void CallaterCallFunc(size_t idx)
 {
     table.funcs[idx](table.args[idx]);
     table.funcs[idx] = CallaterNoop;
+    table.delays[idx] = INFINITY;
 }
 
 void CallaterUpdate()
@@ -128,13 +142,17 @@ void CallaterUpdate()
     };
     
     size_t i;
-    for (i = 0; i < per8; i++)
+    for(i = 0 ; i < per8 ; i++)
     {
         const size_t curVecIdx = i * 8;
-        *(__m256*)(table.delays + curVecIdx) = _mm256_sub_ps(*(__m256*)(table.delays + curVecIdx), deltaVec);
-        __m256 results = _mm256_cmp_ps(*(__m256*)(table.delays + curVecIdx), zero, _CMP_LE_OS);
+        float *curVec = (table.delays + curVecIdx);
+        __m256 tableDelaysVec = _mm256_load_ps(curVec);
+        __m256 tableDelaysSubtracted = _mm256_sub_ps(tableDelaysVec, deltaVec);
+        _mm256_store_ps(curVec, tableDelaysSubtracted);
+        
+        __m256 results = _mm256_cmp_ps(tableDelaysSubtracted, zero, _CMP_LE_OS);
         const int(*asInts)[8] = (void*)&results;
-        for (int j = 0; j < 8; j++)
+        for(int j = 0 ; j < 8 ; j++)
         {
             if ((*asInts)[j])
             {
