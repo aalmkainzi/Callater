@@ -15,10 +15,13 @@ typedef struct CallaterTable
 {
     size_t cap;
     size_t count;
+    size_t noopCount;
     void(**funcs)(void*);
     void** args;
     float* delays;
     float lastUpdated;
+    float noUpdateTimeAccum;
+    float minDelay;
     unsigned char delaysPtrOffset;
 } CallaterTable;
 
@@ -64,6 +67,7 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
 
 void CallaterInit()
 {
+    table = (CallaterTable){0};
     table.lastUpdated = CallaterCurrentTime();
     
     table.count = 0;
@@ -71,6 +75,7 @@ void CallaterInit()
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
     table.args   = calloc(table.cap, sizeof(*table.args));
     table.delays = CallaterAlignedAlloc(table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
+    table.minDelay = INFINITY;
 }
 
 static void CallaterNoop(void* arg)
@@ -108,44 +113,31 @@ static void CallaterMaybeGrowTable()
     }
 }
 
-static void CallaterInsertFunc(void(*func)(void*), void* arg, float delay)
-{
-    CallaterMaybeGrowTable();
-    table.funcs[table.count] = func;
-    table.delays[table.count] = delay;
-    table.args[table.count] = arg;
-    table.count += 1;
-    
-    if (table.count >= 1024)
-        CallaterCleanupTable();
-}
-
 static void CallaterCallFunc(size_t idx)
 {
     table.funcs[idx](table.args[idx]);
     table.funcs[idx] = CallaterNoop;
     table.delays[idx] = INFINITY;
+    table.noopCount++;
 }
 
-void CallaterUpdate()
+static void UpdateDelayAccumulated()
 {
     const float currentTime = CallaterCurrentTime();
     const float deltaTime = currentTime - table.lastUpdated;
     table.lastUpdated = currentTime;
-    
-    const size_t per8 = table.count / 8;
-    const int remaining = table.count % 8;
-    
-    const __m256 zero = { 0 };
-    const __m256 deltaVec = {
-        deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime, deltaTime
-    };
+    table.noUpdateTimeAccum += deltaTime;
+}
+
+static void CallaterForceUpdate()
+{
+    const __m256 zero = _mm256_setzero_ps();
+    const __m256 deltaVec = _mm256_set1_ps(table.noUpdateTimeAccum);
     
     size_t i;
-    for(i = 0 ; i < per8 ; i++)
+    for(i = 0 ; i + 7 < table.count ; i += 8)
     {
-        const size_t curVecIdx = i * 8;
-        float *curVec = (table.delays + curVecIdx);
+        float *curVec = (table.delays + i);
         __m256 tableDelaysVec = _mm256_load_ps(curVec);
         __m256 tableDelaysSubtracted = _mm256_sub_ps(tableDelaysVec, deltaVec);
         _mm256_store_ps(curVec, tableDelaysSubtracted);
@@ -156,24 +148,85 @@ void CallaterUpdate()
         {
             if ((*asInts)[j])
             {
-                CallaterCallFunc(curVecIdx + j);
+                CallaterCallFunc(i + j);
             }
         }
     }
     
-    const size_t remainingIndex = i * 8;
+    const size_t remaining = table.count - i;
     
     for(int j = 0 ; j < remaining ; j++)
     {
-        table.delays[j + remainingIndex] -= deltaTime;
-        if (table.delays[j + remainingIndex] <= 0)
+        table.delays[j + i] -= table.noUpdateTimeAccum;
+        if (table.delays[j + i] <= 0)
         {
-            CallaterCallFunc(j + remainingIndex);
+            CallaterCallFunc(j + i);
         }
     }
+    
+    table.minDelay -= table.noUpdateTimeAccum;
+    if(table.minDelay < 0)
+    {
+        float newMinDelay = INFINITY;
+        for(size_t i = 0 ; i < table.count ; i++)
+        {
+            if(table.delays[i] < newMinDelay)
+            {
+                newMinDelay = table.delays[i];
+            }
+        }
+        table.minDelay = newMinDelay;
+    }
+    
+    table.noUpdateTimeAccum = 0;
+}
+
+void CallaterUpdate()
+{
+    UpdateDelayAccumulated();
+    
+    if(table.noUpdateTimeAccum < table.minDelay)
+    {
+        // no function would be called anyway, wait until the delay accumulated is big enough
+        return;
+    }
+    
+    CallaterForceUpdate();
+}
+
+static void CallaterInsertFunc(void(*func)(void*), void* arg, float delay)
+{
+    CallaterMaybeGrowTable();
+    table.funcs[table.count] = func;
+    table.delays[table.count] = delay;
+    table.args[table.count] = arg;
+    
+    UpdateDelayAccumulated();
+    
+    CallaterForceUpdate();
+    
+    if(delay < table.minDelay)
+    {
+        table.minDelay = delay;
+    }
+    
+    table.count += 1;
+    
+    if (table.noopCount >= 8)
+        CallaterCleanupTable();
 }
 
 void CallaterInvokeLater(void(*func)(void*), void* arg, float delay)
 {
     CallaterInsertFunc(func, arg, delay);
 }
+
+// maybe even make it return ID (index basically) so u can cancel InvokeRepeating
+// make StopInvokeRepeating
+// the args here should be a struct void*
+void InvokeRepeatingWrapper(void(*foo)(void*), void*arg, float delay)
+{
+    foo(arg);
+    CallaterInvokeLater(foo, arg, delay);
+}
+
