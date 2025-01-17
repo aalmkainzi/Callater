@@ -194,7 +194,7 @@ void CallaterUpdate()
     CallaterForceUpdate();
 }
 
-static void CallaterInsertFunc(void(*func)(void*), void* arg, float delay)
+void CallaterInvoke(void(*func)(void*), void* arg, float delay)
 {
     CallaterMaybeGrowTable();
     table.funcs[table.count] = func;
@@ -216,17 +216,8 @@ static void CallaterInsertFunc(void(*func)(void*), void* arg, float delay)
         CallaterCleanupTable();
 }
 
-void CallaterInvokeLater(void(*func)(void*), void* arg, float delay)
+void CallaterInvokeNull(void(*func)(void*), float delay)
 {
-    CallaterInsertFunc(func, arg, delay);
-}
-
-// maybe even make it return ID (index basically) so u can cancel InvokeRepeating
-// make StopInvokeRepeating
-// the args here should be a struct void*
-void InvokeRepeatingWrapper(void(*foo)(void*), void*arg, float delay)
-{
-    foo(arg);
-    CallaterInvokeLater(foo, arg, delay);
+    CallaterInvoke(func, NULL, delay);
 }
 
