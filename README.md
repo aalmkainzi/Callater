@@ -31,13 +31,13 @@ int main()
     CallaterInit();
     
     int nums[100];
-    for(int i = 0 ; i < 100 ; i++)
+    for(int i = 0 ; i < 10 ; i++)
     {
         nums[i] = i;
-        Invoke(printNum, &nums[i], i / 10.0f);
+        Invoke(printNum, &nums[i], i / 2.0f);
     }
     
-    Invoke(exitMsg, "bye", 10.0f);
+    Invoke(exitMsg, "bye", 5.0f);
     
     while(1)
         CallaterUpdate();
