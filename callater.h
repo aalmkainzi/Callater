@@ -4,7 +4,6 @@
 #ifndef CALLATER_NO_SHORT_NAMES
     
     #define Invoke CallaterInvoke
-    #define InvokeNull CallaterInvokeNull
     #define InvokeRepeat CallaterInvokeRepeat
     
 #endif
@@ -15,7 +14,7 @@ void CallaterInit();
 // adds the function `func` to be called after `delay` time, with `arg` passed to it
 void CallaterInvoke(void(*func)(void*), void* arg, float delay);
 
-// calls `func` after `firstDelay` seconds, then every `repeatDelay` seconds
+// calls `func` after `firstDelay` seconds, then every `repeatRate` seconds
 void CallaterInvokeRepeat(void(*func)(void*), void *arg, float firstDelay, float repeatRate);
 
 // this must be called for the functions added with `CallaterInvoke` to actually get called
