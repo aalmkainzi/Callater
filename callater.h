@@ -8,11 +8,23 @@
     
 #endif
 
-void CallaterInvoke(void(*func)(void*), void* arg, float delay);
-void CallaterInvokeNull(void(*func)(void*), float delay);
-void CallaterUpdate();
+// initialize the Callater context
 void CallaterInit();
 
-void CallaterShrinkToFit(); // realloc table to match table.count
-void CallaterDeinit(); // free all buffers
+// adds the function `func` to be called after `delay` time, with `arg` passed to it
+void CallaterInvoke(void(*func)(void*), void* arg, float delay);
+
+// same as above except NULL will be passed to `func`
+void CallaterInvokeNull(void(*func)(void*), float delay);
+
+// this must be called for the functions added with `CallaterInvoke` to actually get called
+// basically you should call this once every frame
+void CallaterUpdate();
+
+// realloc to match size
+void CallaterShrinkToFit();
+
+// free all buffers
+void CallaterDeinit();
+
 #endif

@@ -171,7 +171,7 @@ static void CallaterForceUpdate()
     }
     
     table.minDelay -= table.noUpdateTimeAccum;
-    if(table.minDelay < 0)
+    if(table.minDelay <= 0)
     {
         float newMinDelay = INFINITY;
         for(size_t i = 0 ; i < table.count ; i++)
@@ -194,7 +194,6 @@ void CallaterUpdate()
     if(table.noUpdateTimeAccum < table.minDelay)
     {
         // no function would be called anyway, wait until the delay accumulated is big enough
-        
         if(table.noopCount >= 8)
             CallaterCleanupTable();
         return;
