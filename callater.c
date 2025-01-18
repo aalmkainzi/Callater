@@ -211,7 +211,7 @@ void CallaterUpdate()
     // check ifno function would be called anyway, wait until the delay accumulated is big enough
     if(table.noUpdateTimeAccum < table.minDelay)
     {
-        if(table.noopCount >= 8)
+        if(table.noopCount >= table.count / 2)
             CallaterCleanupTable();
         return;
     }
