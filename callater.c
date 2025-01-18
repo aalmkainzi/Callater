@@ -11,12 +11,6 @@
 #include <sysinfoapi.h>
 #endif
 
-/*
-current idea for InvokeRepeating:
-add a new buffer of type sturct { void *arg; void(*func)(void); float ogDelay; }
-check if `func` is NULL to know whether this repeats or not. If so,
-then reset the delay in the same index
-*/
 typedef struct CallaterTable
 {
     size_t cap;
