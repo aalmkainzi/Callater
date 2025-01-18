@@ -47,7 +47,7 @@ static void *CallaterAlignedAlloc(size_t size, unsigned char alignment, unsigned
     return aligned;
 }
 
-static unsigned char ucmin(unsigned char a, unsigned char b)
+static size_t szmin(size_t a, size_t b)
 {
     return a < b ? a : b;
 }
@@ -59,7 +59,7 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
     unsigned char newOffset = (char*)aligned - (char*)ret;
     
     if(newOffset != *offset)
-        memmove(aligned, ret + *offset, ucmin(size, oldSize));
+        memmove(aligned, ret + *offset, szmin(size, oldSize));
     
     *offset = newOffset;
     return aligned;
@@ -108,7 +108,7 @@ static void CallaterMaybeGrowTable()
         const size_t newCap = table.cap * 2;
         table.funcs  = realloc(table.funcs,  newCap * sizeof(*table.funcs));
         table.args   = realloc(table.args,   newCap * sizeof(*table.args));
-        table.delays = CallaterAlignedRealloc(table.delays, newCap * sizeof(*table.delays), table.cap, 32, &table.delaysPtrOffset);
+        table.delays = CallaterAlignedRealloc(table.delays, newCap * sizeof(*table.delays), table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
         table.cap = newCap;
     }
 }
