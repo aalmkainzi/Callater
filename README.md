@@ -30,7 +30,7 @@ int main()
 {
     CallaterInit();
     
-    int nums[1000];
+    int nums[100];
     for(int i = 0 ; i < 100 ; i++)
     {
         nums[i] = i;
