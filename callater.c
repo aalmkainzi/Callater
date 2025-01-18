@@ -11,14 +11,21 @@
 #include <sysinfoapi.h>
 #endif
 
+/*
+current idea for InvokeRepeating:
+add a new buffer of type sturct { void *arg; void(*func)(void); float ogDelay; }
+check if `func` is NULL to know whether this repeats or not. If so,
+then reset the delay in the same index
+*/
 typedef struct CallaterTable
 {
     size_t cap;
     size_t count;
     size_t noopCount;
     void(**funcs)(void*);
-    void** args;
-    float* delays;
+    void **args;
+    float *delays;
+    float *originalDelays; // if neg, then no repeat
     float lastUpdated;
     float noUpdateTimeAccum;
     float minDelay;
@@ -75,6 +82,8 @@ void CallaterInit()
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
     table.args   = calloc(table.cap, sizeof(*table.args));
     table.delays = CallaterAlignedAlloc(table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
+    table.originalDelays = malloc(table.cap * sizeof(*table.originalDelays));
+    
     table.minDelay = INFINITY;
 }
 
@@ -85,9 +94,10 @@ static void CallaterNoop(void* arg)
 
 static void CallaterPopFunc(size_t idx)
 {
-    table.funcs[idx]  = table.funcs[table.count - 1];
+    table.funcs[idx] = table.funcs[table.count - 1];
     table.delays[idx] = table.delays[table.count - 1];
-    table.args[idx]   = table.args[table.count - 1];
+    table.args[idx]  = table.args[table.count - 1];
+    table.originalDelays[idx] = table.originalDelays[table.count - 1];
     table.count -= 1;
 }
 
@@ -100,31 +110,44 @@ static void CallaterCleanupTable()
     }
 }
 
+static void CallaterReallocTable(size_t newCap)
+{
+    table.funcs  = realloc(table.funcs,  newCap * sizeof(*table.funcs));
+    table.args   = realloc(table.args,   newCap * sizeof(*table.args));
+    table.delays =
+    CallaterAlignedRealloc(
+        table.delays,
+        newCap    * sizeof(*table.delays),
+        table.cap * sizeof(*table.delays),
+        32,
+        &table.delaysPtrOffset
+    );
+    table.originalDelays = realloc(table.originalDelays, newCap * sizeof(*table.originalDelays));
+    table.cap = newCap;
+}
+
 static void CallaterMaybeGrowTable()
 {
     if(table.cap <= table.count)
     {
         const size_t newCap = table.cap * 2;
-        table.funcs  = realloc(table.funcs,  newCap * sizeof(*table.funcs));
-        table.args   = realloc(table.args,   newCap * sizeof(*table.args));
-        table.delays =
-        CallaterAlignedRealloc(
-            table.delays,
-            newCap    * sizeof(*table.delays),
-            table.cap * sizeof(*table.delays),
-            32,
-            &table.delaysPtrOffset
-        );
-        table.cap = newCap;
+        CallaterReallocTable(newCap);
     }
 }
 
 static void CallaterCallFunc(size_t idx)
 {
     table.funcs[idx](table.args[idx]);
-    table.funcs[idx] = CallaterNoop;
-    table.delays[idx] = INFINITY;
-    table.noopCount++;
+    if(table.originalDelays[idx] < 0)
+    {
+        table.funcs[idx] = CallaterNoop;
+        table.delays[idx] = INFINITY;
+        table.noopCount++;
+    }
+    else
+    {
+        table.delays[idx] = table.originalDelays[idx];
+    }
 }
 
 static void UpdateDelayAccumulated()
@@ -170,8 +193,8 @@ static void CallaterForceUpdate()
         }
     }
     
-    table.minDelay -= table.noUpdateTimeAccum;
-    if(table.minDelay <= 0)
+    //table.minDelay -= table.noUpdateTimeAccum;
+    //if(table.minDelay <= 0)
     {
         float newMinDelay = INFINITY;
         for(size_t i = 0 ; i < table.count ; i++)
@@ -191,9 +214,9 @@ void CallaterUpdate()
 {
     UpdateDelayAccumulated();
     
+    // check ifno function would be called anyway, wait until the delay accumulated is big enough
     if(table.noUpdateTimeAccum < table.minDelay)
     {
-        // no function would be called anyway, wait until the delay accumulated is big enough
         if(table.noopCount >= 8)
             CallaterCleanupTable();
         return;
@@ -210,6 +233,7 @@ void CallaterInvoke(void(*func)(void*), void* arg, float delay)
     table.funcs[table.count] = func;
     table.delays[table.count] = delay + table.noUpdateTimeAccum;
     table.args[table.count] = arg;
+    table.originalDelays[table.count] = -1;
     table.count += 1;
     
     if(table.delays[table.count] < table.minDelay)
@@ -223,23 +247,18 @@ void CallaterInvokeNull(void(*func)(void*), float delay)
     CallaterInvoke(func, NULL, delay);
 }
 
+void CallaterInvokeRepeat(void(*func)(void*), void *arg, float firstDelay, float repeatRate)
+{
+    CallaterInvoke(func, arg, firstDelay);
+    table.originalDelays[table.count - 1] = repeatRate;
+}
+
 void CallaterShrinkToFit()
 {
     if(table.noopCount >= 8)
         CallaterCleanupTable();
     
-    const size_t newCap = table.count;
-    table.funcs = realloc(table.funcs, newCap * sizeof(*table.funcs));
-    table.args  = realloc(table.args,  newCap * sizeof(*table.args));
-    table.delays =
-    CallaterAlignedRealloc(
-        table.delays,
-        newCap    * sizeof(*table.delays),
-        table.cap * sizeof(*table.delays),
-        32,
-        &table.delaysPtrOffset
-    );
-    table.cap = newCap;
+    CallaterReallocTable(table.count);
 }
 
 void CallaterDeinit()
@@ -247,6 +266,6 @@ void CallaterDeinit()
     free(table.funcs);
     free(table.args);
     free(table.delays - table.delaysPtrOffset);
+    free(table.originalDelays);
     table = (CallaterTable){0};
 }
-

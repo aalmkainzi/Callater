@@ -17,6 +17,9 @@ void CallaterInvoke(void(*func)(void*), void* arg, float delay);
 // same as above except NULL will be passed to `func`
 void CallaterInvokeNull(void(*func)(void*), float delay);
 
+// calls `func` after `firstDelay` seconds, then every `repeatDelay` seconds
+void CallaterInvokeRepeat(void(*func)(void*), void *arg, float firstDelay, float repeatRate);
+
 // this must be called for the functions added with `CallaterInvoke` to actually get called
 // basically you should call this once every frame
 void CallaterUpdate();
