@@ -19,7 +19,8 @@ typedef struct CallaterTable
     void(**funcs)(void*);
     void **args;
     float *invokeTimes;
-    float startTime;
+    float *originalDelays;
+    // float startTime;
     unsigned char delaysPtrOffset;
 } CallaterTable;
 
@@ -66,13 +67,14 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
 void CallaterInit()
 {
     table = (CallaterTable){0};
-    table.startTime = CallaterCurrentTime();
+    // table.startTime = CallaterCurrentTime();
     
     table.count = 0;
     table.cap   = 64;
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
     table.args   = calloc(table.cap, sizeof(*table.args));
     table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
+    table.originalDelays = malloc(table.cap * sizeof(*table.originalDelays));
     table.nextFuncIdx = (size_t)-1;
 }
 
@@ -98,6 +100,7 @@ static void CallaterReallocTable(size_t newCap)
         32,
         &table.delaysPtrOffset
     );
+    table.originalDelays = realloc(table.originalDelays, newCap * sizeof(*table.originalDelays));
     table.cap = newCap;
 }
 
@@ -112,12 +115,56 @@ static void CallaterMaybeGrowTable()
 
 void CallaterUpdate()
 {
-    
+    float curTime = CallaterCurrentTime();
+    for(size_t i = table.count - 1 ; i != (size_t)-1 ; i--)
+    {
+        if(table.invokeTimes[i] < curTime)
+        {
+            break;
+        }
+        
+        table.funcs[i](table.args[i]);
+        table.count -= 1;
+    }
 }
 
-static void CallaterInsertFunc(void(*func)(void*), void *arg, float invokeTime)
+static void CallaterInsertFuncAt(void(*func)(void*), void *arg, float invokeTime, float originalDelay, size_t idx)
 {
+    // shift buffers by 1 to the right
+    memmove(table.invokeTimes    + idx + 1, table.invokeTimes    + idx, (table.count - idx) * sizeof(*table.invokeTimes));
+    memmove(table.funcs          + idx + 1, table.funcs          + idx, (table.count - idx) * sizeof(*table.funcs));
+    memmove(table.args           + idx + 1, table.args           + idx, (table.count - idx) * sizeof(*table.args));
+    memmove(table.originalDelays + idx + 1, table.originalDelays + idx, (table.count - idx) * sizeof(*table.originalDelays));
     
+    table.invokeTimes[idx] = invokeTime;
+    table.funcs[idx] = func;
+    table.args[idx] = arg;
+    table.originalDelays[idx] = originalDelay;
+}
+
+static void CallaterInsertFunc(void(*func)(void*), void *arg, float invokeTime, float originalDelay)
+{
+    size_t begin = 0;
+    size_t end = table.count;
+    size_t mid = (end - begin) / 2;
+    while(end - begin > 1)
+    {
+        size_t mid = (end - begin) / 2;
+        if(invokeTime < table.invokeTimes[mid])
+        {
+            begin = mid + 1;
+        }
+        else if(invokeTime > table.invokeTimes[mid])
+        {
+            end = mid - 1;
+        }
+        else
+        {
+            CallaterInsertFuncAt(func, arg, invokeTime, originalDelay, mid);
+            return;
+        }
+    }
+    CallaterInsertFuncAt(func, arg, invokeTime, originalDelay, mid);
 }
 
 void CallaterInvoke(void(*func)(void*), void* arg, float delay)
@@ -126,7 +173,7 @@ void CallaterInvoke(void(*func)(void*), void* arg, float delay)
     
     float invokeTime = delay + CallaterCurrentTime();
     
-    CallaterInsertFunc(func, arg, invokeTime);
+    CallaterInsertFunc(func, arg, invokeTime, -delay);
 }
 
 void CallaterInvokeNull(void(*func)(void*), float delay)
@@ -136,15 +183,15 @@ void CallaterInvokeNull(void(*func)(void*), float delay)
 
 void CallaterInvokeRepeat(void(*func)(void*), void *arg, float firstDelay, float repeatRate)
 {
-    CallaterInvoke(func, arg, firstDelay);
-    table.originalDelays[table.count - 1] = repeatRate;
+    CallaterMaybeGrowTable();
+    
+    float invokeTime = firstDelay + CallaterCurrentTime();
+    
+    CallaterInsertFunc(func, arg, invokeTime, repeatRate);
 }
 
 void CallaterShrinkToFit()
 {
-    if(table.noopCount >= 8)
-        CallaterCleanupTable();
-    
     CallaterReallocTable(table.count);
 }
 
@@ -152,7 +199,7 @@ void CallaterDeinit()
 {
     free(table.funcs);
     free(table.args);
-    free(table.delays - table.delaysPtrOffset);
+    free(table.invokeTimes - table.delaysPtrOffset);
     free(table.originalDelays);
     table = (CallaterTable){0};
 }
