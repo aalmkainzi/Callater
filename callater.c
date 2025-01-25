@@ -118,53 +118,62 @@ void CallaterUpdate()
     float curTime = CallaterCurrentTime();
     for(size_t i = table.count - 1 ; i != (size_t)-1 ; i--)
     {
-        if(table.invokeTimes[i] < curTime)
+        if(table.invokeTimes[i] > curTime)
         {
             break;
         }
         
         table.funcs[i](table.args[i]);
         table.count -= 1;
+        
+        if(table.originalDelays[i] > 0)
+        {
+            CallaterInvokeRepeat(table.funcs[i], table.args[i], table.originalDelays[i], table.originalDelays[i]);
+            i++;
+        }
     }
 }
 
 static void CallaterInsertFuncAt(void(*func)(void*), void *arg, float invokeTime, float originalDelay, size_t idx)
 {
     // shift buffers by 1 to the right
-    memmove(table.invokeTimes    + idx + 1, table.invokeTimes    + idx, (table.count - idx) * sizeof(*table.invokeTimes));
     memmove(table.funcs          + idx + 1, table.funcs          + idx, (table.count - idx) * sizeof(*table.funcs));
     memmove(table.args           + idx + 1, table.args           + idx, (table.count - idx) * sizeof(*table.args));
+    memmove(table.invokeTimes    + idx + 1, table.invokeTimes    + idx, (table.count - idx) * sizeof(*table.invokeTimes));
     memmove(table.originalDelays + idx + 1, table.originalDelays + idx, (table.count - idx) * sizeof(*table.originalDelays));
     
     table.invokeTimes[idx] = invokeTime;
     table.funcs[idx] = func;
     table.args[idx] = arg;
     table.originalDelays[idx] = originalDelay;
+    
+    table.count += 1;
 }
 
 static void CallaterInsertFunc(void(*func)(void*), void *arg, float invokeTime, float originalDelay)
 {
     size_t begin = 0;
     size_t end = table.count;
-    size_t mid = (end - begin) / 2;
-    while(end - begin > 1)
+    size_t mid = (end + begin) / 2;
+    
+    while(begin < end)
     {
-        size_t mid = (end - begin) / 2;
+        mid = (end + begin) / 2;
         if(invokeTime < table.invokeTimes[mid])
         {
             begin = mid + 1;
         }
         else if(invokeTime > table.invokeTimes[mid])
         {
-            end = mid - 1;
+            end = mid;
         }
         else
         {
-            CallaterInsertFuncAt(func, arg, invokeTime, originalDelay, mid);
-            return;
+            break;
         }
     }
-    CallaterInsertFuncAt(func, arg, invokeTime, originalDelay, mid);
+    
+    CallaterInsertFuncAt(func, arg, invokeTime, originalDelay, begin);
 }
 
 void CallaterInvoke(void(*func)(void*), void* arg, float delay)
