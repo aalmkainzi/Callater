@@ -165,7 +165,7 @@ static void CallaterCallFunc(size_t idx, float curTime)
     }
 }
 
-static void CallaterForceUpdate(float curTime)
+static void CallaterTick(float curTime)
 {
     const __m256 curTimeVec = _mm256_set1_ps(curTime);
     
@@ -216,7 +216,7 @@ void CallaterUpdate()
         return;
     }
     
-    CallaterForceUpdate(curTime);
+    CallaterTick(curTime);
 }
 
 void CallaterInvoke(void(*func)(void*), void* arg, float delay)
