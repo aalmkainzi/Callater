@@ -20,8 +20,6 @@ typedef struct CallaterTable
     void **args;
     float *invokeTimes;
     float *originalDelays; // if neg, then no repeat
-    // float lastUpdated;
-    // float noUpdateTimeAccum;
     float minInvokeTime;
     unsigned char delaysPtrOffset;
 } CallaterTable;
@@ -34,7 +32,7 @@ float CallaterCurrentTime()
     return GetTickCount64() / 1000.0f;
     #else
     struct timespec ts;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
     
     return ts.tv_sec + ts.tv_nsec / 1000000000.0f;
     #endif
@@ -94,12 +92,36 @@ static void CallaterPopFunc(size_t idx)
     table.count -= 1;
 }
 
+#define CALLATER_FLT_AS_INT(f) \
+((union{float asFloat; int asInt;}){.asFloat = f}.asInt)
+
 static void CallaterCleanupTable()
 {
-    for(size_t i = 0 ; i < table.count ; i++)
+    __m256 infVec = _mm256_set1_ps(INFINITY);
+    size_t i;
+    for(i = 0 ; i + 7 < table.count ; i += 8)
     {
-        if(table.funcs[i] == CallaterNoop)
-            CallaterPopFunc(i);
+        __m256 curTimeVec = _mm256_load_ps(table.invokeTimes + i);
+        __m256 results = _mm256_cmp_ps(curTimeVec, infVec, _CMP_EQ_OQ);
+        
+        for(int j = 0 ; j < 8 ; j++)
+        {
+            if(CALLATER_FLT_AS_INT(results[j]) == -1)
+            {
+                CallaterPopFunc(i + j);
+                table.noopCount--;
+            }
+        }
+    }
+    
+    int remaining = table.count - i;
+    for(int j = 0 ; j < remaining ; j++)
+    {
+        if(CALLATER_FLT_AS_INT(table.invokeTimes[i + j]) == -1)
+        {
+            CallaterPopFunc(i + j);
+            table.noopCount--;
+        }
     }
 }
 
@@ -150,10 +172,9 @@ static void CallaterForceUpdate(float curTime)
     size_t i;
     for(i = 0 ; i + 7 < table.count ; i += 8)
     {
-        float *curVec = (table.invokeTimes + i);
-        __m256 tableDelaysVec = _mm256_load_ps(curVec);
+        __m256 tableDelaysVec = _mm256_load_ps(table.invokeTimes + i);
+        __m256 results = _mm256_cmp_ps(curTimeVec, tableDelaysVec, _CMP_GE_OQ);
         
-        __m256 results = _mm256_cmp_ps(curTimeVec, tableDelaysVec, _CMP_GE_OS);
         const int(*asInts)[8] = (void*)&results;
         for(int j = 0 ; j < 8 ; j++)
         {
