@@ -34,7 +34,7 @@ float CallaterCurrentTime()
     return GetTickCount64() / 1000.0f;
     #else
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
     
     return ts.tv_sec + ts.tv_nsec / 1000000000.0f;
     #endif
