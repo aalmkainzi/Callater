@@ -115,7 +115,18 @@ static void CallaterMaybeGrowTable()
 
 void CallaterUpdate()
 {
+    typedef struct Entry
+    {
+        float invokeTime;
+        void *arg;
+        void(*func)(void*);
+    } Entry;
+    
     float curTime = CallaterCurrentTime();
+    
+    Entry *repeatEntries = malloc(sizeof(Entry) * table.count);
+    size_t nbRepeat = 0;
+    
     for(size_t i = table.count - 1 ; i != (size_t)-1 ; i--)
     {
         if(table.invokeTimes[i] > curTime)
@@ -126,12 +137,22 @@ void CallaterUpdate()
         table.funcs[i](table.args[i]);
         table.count -= 1;
         
-        if(table.originalDelays[i] > 0)
+        if(table.originalDelays[i] >= 0)
         {
-            CallaterInvokeRepeat(table.funcs[i], table.args[i], table.originalDelays[i], table.originalDelays[i]);
-            i++;
+            repeatEntries[nbRepeat++] = (Entry){
+                .invokeTime = table.originalDelays[i],
+                .arg        = table.args[i],
+                .func       = table.funcs[i]
+            };
         }
     }
+    
+    for(size_t i = 0 ; i < nbRepeat ; i++)
+    {
+        CallaterInvokeRepeat(repeatEntries[i].func, repeatEntries[i].arg, repeatEntries[i].invokeTime, repeatEntries[i].invokeTime);
+    }
+    
+    free(repeatEntries);
 }
 
 static void CallaterInsertFuncAt(void(*func)(void*), void *arg, float invokeTime, float originalDelay, size_t idx)
@@ -182,7 +203,7 @@ void CallaterInvoke(void(*func)(void*), void* arg, float delay)
     
     float invokeTime = delay + CallaterCurrentTime();
     
-    CallaterInsertFunc(func, arg, invokeTime, -delay);
+    CallaterInsertFunc(func, arg, invokeTime, -delay - 1.0f);
 }
 
 void CallaterInvokeNull(void(*func)(void*), float delay)
