@@ -18,11 +18,11 @@ typedef struct CallaterTable
     size_t noopCount;
     void(**funcs)(void*);
     void **args;
-    float *delays;
+    float *invokeTimes;
     float *originalDelays; // if neg, then no repeat
-    float lastUpdated;
-    float noUpdateTimeAccum;
-    float minDelay;
+    // float lastUpdated;
+    // float noUpdateTimeAccum;
+    float minInvokeTime;
     unsigned char delaysPtrOffset;
 } CallaterTable;
 
@@ -69,16 +69,15 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
 void CallaterInit()
 {
     table = (CallaterTable){0};
-    table.lastUpdated = CallaterCurrentTime();
     
     table.count = 0;
     table.cap   = 64;
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
     table.args   = calloc(table.cap, sizeof(*table.args));
-    table.delays = CallaterAlignedAlloc(table.cap * sizeof(*table.delays), 32, &table.delaysPtrOffset);
+    table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
     table.originalDelays = malloc(table.cap * sizeof(*table.originalDelays));
     
-    table.minDelay = INFINITY;
+    table.minInvokeTime = INFINITY;
 }
 
 static void CallaterNoop(void* arg)
@@ -89,7 +88,7 @@ static void CallaterNoop(void* arg)
 static void CallaterPopFunc(size_t idx)
 {
     table.funcs[idx] = table.funcs[table.count - 1];
-    table.delays[idx] = table.delays[table.count - 1];
+    table.invokeTimes[idx] = table.invokeTimes[table.count - 1];
     table.args[idx]  = table.args[table.count - 1];
     table.originalDelays[idx] = table.originalDelays[table.count - 1];
     table.count -= 1;
@@ -108,11 +107,11 @@ static void CallaterReallocTable(size_t newCap)
 {
     table.funcs  = realloc(table.funcs,  newCap * sizeof(*table.funcs));
     table.args   = realloc(table.args,   newCap * sizeof(*table.args));
-    table.delays =
+    table.invokeTimes =
     CallaterAlignedRealloc(
-        table.delays,
-        newCap    * sizeof(*table.delays),
-        table.cap * sizeof(*table.delays),
+        table.invokeTimes,
+        newCap    * sizeof(*table.invokeTimes),
+        table.cap * sizeof(*table.invokeTimes),
         32,
         &table.delaysPtrOffset
     );
@@ -129,49 +128,38 @@ static void CallaterMaybeGrowTable()
     }
 }
 
-static void CallaterCallFunc(size_t idx)
+static void CallaterCallFunc(size_t idx, float curTime)
 {
     table.funcs[idx](table.args[idx]);
     if(table.originalDelays[idx] < 0)
     {
         table.funcs[idx] = CallaterNoop;
-        table.delays[idx] = INFINITY;
+        table.invokeTimes[idx] = INFINITY;
         table.noopCount++;
     }
     else
     {
-        table.delays[idx] = table.originalDelays[idx];
+        table.invokeTimes[idx] = curTime + table.originalDelays[idx];
     }
 }
 
-static void UpdateDelayAccumulated()
+static void CallaterForceUpdate(float curTime)
 {
-    const float currentTime = CallaterCurrentTime();
-    const float deltaTime = currentTime - table.lastUpdated;
-    table.lastUpdated = currentTime;
-    table.noUpdateTimeAccum += deltaTime;
-}
-
-static void CallaterForceUpdate()
-{
-    const __m256 zero = _mm256_setzero_ps();
-    const __m256 deltaVec = _mm256_set1_ps(table.noUpdateTimeAccum);
+    const __m256 curTimeVec = _mm256_set1_ps(curTime);
     
     size_t i;
     for(i = 0 ; i + 7 < table.count ; i += 8)
     {
-        float *curVec = (table.delays + i);
+        float *curVec = (table.invokeTimes + i);
         __m256 tableDelaysVec = _mm256_load_ps(curVec);
-        __m256 tableDelaysSubtracted = _mm256_sub_ps(tableDelaysVec, deltaVec);
-        _mm256_store_ps(curVec, tableDelaysSubtracted);
         
-        __m256 results = _mm256_cmp_ps(tableDelaysSubtracted, zero, _CMP_LE_OS);
+        __m256 results = _mm256_cmp_ps(curTimeVec, tableDelaysVec, _CMP_GE_OS);
         const int(*asInts)[8] = (void*)&results;
         for(int j = 0 ; j < 8 ; j++)
         {
             if((*asInts)[j])
             {
-                CallaterCallFunc(i + j);
+                CallaterCallFunc(i + j, curTime);
             }
         }
     }
@@ -180,59 +168,51 @@ static void CallaterForceUpdate()
     
     for(int j = 0 ; j < remaining ; j++)
     {
-        table.delays[j + i] -= table.noUpdateTimeAccum;
-        if(table.delays[j + i] <= 0)
+        if(table.invokeTimes[j + i] <= curTime)
         {
-            CallaterCallFunc(j + i);
+            CallaterCallFunc(j + i, curTime);
         }
     }
     
-    //table.minDelay -= table.noUpdateTimeAccum;
-    //if(table.minDelay <= 0)
+    float newMinInvokeTime = INFINITY;
+    for(size_t i = 0 ; i < table.count ; i++)
     {
-        float newMinDelay = INFINITY;
-        for(size_t i = 0 ; i < table.count ; i++)
+        if(table.invokeTimes[i] < newMinInvokeTime)
         {
-            if(table.delays[i] < newMinDelay)
-            {
-                newMinDelay = table.delays[i];
-            }
+            newMinInvokeTime = table.invokeTimes[i];
         }
-        table.minDelay = newMinDelay;
     }
-    
-    table.noUpdateTimeAccum = 0;
+    table.minInvokeTime = newMinInvokeTime;
 }
 
 void CallaterUpdate()
 {
-    UpdateDelayAccumulated();
-    
-    // check ifno function would be called anyway, wait until the delay accumulated is big enough
-    if(table.noUpdateTimeAccum < table.minDelay)
+    float curTime = CallaterCurrentTime();
+    if(curTime < table.minInvokeTime)
     {
-        if(table.noopCount >= table.count / 2)
+        if(table.noopCount > table.count / 2)
             CallaterCleanupTable();
         return;
     }
     
-    CallaterForceUpdate();
+    CallaterForceUpdate(curTime);
 }
 
 void CallaterInvoke(void(*func)(void*), void* arg, float delay)
 {
     CallaterMaybeGrowTable();
-    UpdateDelayAccumulated();
+    
+    float curTime = CallaterCurrentTime();
     
     table.funcs[table.count] = func;
-    table.delays[table.count] = delay + table.noUpdateTimeAccum;
+    table.invokeTimes[table.count] = delay + curTime;
     table.args[table.count] = arg;
     table.originalDelays[table.count] = -1;
     table.count += 1;
     
-    if(table.delays[table.count] < table.minDelay)
+    if(table.invokeTimes[table.count] < table.minInvokeTime)
     {
-        table.minDelay = table.delays[table.count];
+        table.minInvokeTime = table.invokeTimes[table.count];
     }
 }
 
@@ -259,7 +239,7 @@ void CallaterDeinit()
 {
     free(table.funcs);
     free(table.args);
-    free(table.delays - table.delaysPtrOffset);
+    free(table.invokeTimes - table.delaysPtrOffset);
     free(table.originalDelays);
     table = (CallaterTable){0};
 }
