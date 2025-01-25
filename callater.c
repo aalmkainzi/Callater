@@ -93,7 +93,7 @@ static void CallaterPopFunc(size_t idx)
 }
 
 #define CALLATER_FLT_AS_INT(f) \
-((union{float asFloat; int asInt;}){.asFloat = f}.asInt)
+((union{float asFloat; int32_t asInt;}){.asFloat = f}.asInt)
 
 static void CallaterCleanupTable()
 {
