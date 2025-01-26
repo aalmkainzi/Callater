@@ -5,7 +5,6 @@
 #include <time.h>
 #include "../../callater.h"
 
-
 #define FOODSIZE (3.5f)
 typedef struct PlayerCircle
 {
@@ -31,7 +30,6 @@ int main()
     srand(time(NULL));
     
     CallaterInit();
-    SetTargetFPS(60);
     
     Camera2D cam = {0};
     cam.zoom = 1.0f;

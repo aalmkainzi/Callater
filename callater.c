@@ -35,6 +35,7 @@ typedef struct CallaterTable
     void **args;
     uint64_t startSec;
     uint64_t clockFreq;
+    uint64_t *ownerIDs;
     float *invokeTimes;
     float *originalDelays; // if neg, then no repeat
     float minInvokeTime;
@@ -111,6 +112,7 @@ void CallaterInit()
     table.args   = calloc(table.cap, sizeof(*table.args));
     table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
     table.originalDelays = malloc(table.cap * sizeof(*table.originalDelays));
+    table.ownerIDs = calloc(table.cap, sizeof(*table.ownerIDs));
     
     table.minInvokeTime = INFINITY;
 }
@@ -126,6 +128,7 @@ static void CallaterPopFunc(size_t idx)
     table.invokeTimes[idx] = table.invokeTimes[table.count - 1];
     table.args[idx]  = table.args[table.count - 1];
     table.originalDelays[idx] = table.originalDelays[table.count - 1];
+    table.ownerIDs[idx] = table.ownerIDs[table.count - 1];
     table.count -= 1;
 }
 
@@ -172,6 +175,7 @@ static void CallaterReallocTable(size_t newCap)
         &table.delaysPtrOffset
     );
     table.originalDelays = realloc(table.originalDelays, newCap * sizeof(*table.originalDelays));
+    table.ownerIDs = realloc(table.ownerIDs, newCap * sizeof(*table.ownerIDs));
     table.cap = newCap;
 }
 
@@ -191,6 +195,7 @@ static void CallaterCallFunc(size_t idx, float curTime)
     {
         table.funcs[idx] = CallaterNoop;
         table.invokeTimes[idx] = INFINITY;
+        table.ownerIDs[idx] = 0;
         table.noopCount++;
     }
     else
@@ -255,6 +260,16 @@ void CallaterUpdate()
 
 void CallaterInvoke(void(*func)(void*), void* arg, float delay)
 {
+    CallaterInvokeID(func, arg, delay, 0);
+}
+
+void CallaterInvokeNull(void(*func)(void*), float delay)
+{
+    CallaterInvoke(func, NULL, delay);
+}
+
+void CallaterInvokeID(void(*func)(void*), void *arg, float delay, uint64_t id)
+{
     CallaterMaybeGrowTable();
     
     float curTime = CallaterCurrentTime();
@@ -263,6 +278,7 @@ void CallaterInvoke(void(*func)(void*), void* arg, float delay)
     table.invokeTimes[table.count] = delay + curTime;
     table.args[table.count] = arg;
     table.originalDelays[table.count] = -1;
+    table.ownerIDs[table.count] = id;
     table.count += 1;
     
     if(table.invokeTimes[table.count] < table.minInvokeTime)
@@ -271,15 +287,51 @@ void CallaterInvoke(void(*func)(void*), void* arg, float delay)
     }
 }
 
-void CallaterInvokeNull(void(*func)(void*), float delay)
-{
-    CallaterInvoke(func, NULL, delay);
-}
-
 void CallaterInvokeRepeat(void(*func)(void*), void *arg, float firstDelay, float repeatRate)
 {
-    CallaterInvoke(func, arg, firstDelay);
+    CallaterInvokeRepeatID(func, arg, firstDelay, repeatRate, 0);
+}
+
+void CallaterInvokeRepeatID(void(*func)(void*), void *arg, float firstDelay, float repeatRate, uint64_t id)
+{
+    CallaterInvokeID(func, arg, firstDelay, id);
     table.originalDelays[table.count - 1] = repeatRate;
+}
+
+void CallaterCancelAllID(uint64_t id)
+{
+    for(size_t i = 0 ; i < table.count ; i++)
+    {
+        if(table.ownerIDs[i] == id)
+        {
+            CallaterPopFunc(i);
+            i--;
+        }
+    }
+}
+
+void CallaterCancelAll(void(*func)(void*))
+{
+    for(size_t i = 0 ; i < table.count ; i++)
+    {
+        if(table.funcs[i] == func)
+        {
+            CallaterPopFunc(i);
+            i--;
+        }
+    }
+}
+
+void CallaterCancel(void(*func)(void*))
+{
+    for(size_t i = 0 ; i < table.count ; i++)
+    {
+        if(table.funcs[i] == func)
+        {
+            CallaterPopFunc(i);
+            return;
+        }
+    }
 }
 
 void CallaterShrinkToFit()
