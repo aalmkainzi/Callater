@@ -11,6 +11,10 @@
 #include <windows.h>
 #include <sysinfoapi.h>
 
+#endif
+
+#ifdef _MSC_VER
+
 #define CALLATER_M256_AT(vec, idx) vec.m256_f32[idx]
 
 #else
