@@ -45,15 +45,17 @@ static CallaterTable table = {0};
 float CallaterCurrentTime()
 {
     #ifdef _WIN32
-    uint64_t tickCount = GetTickCount64();
-    uint64_t secs = tickCount / 1000;
-    uint64_t rem = tickCount % 1000;
-    return (secs - table.startSec) + (rem / 1000.0f);
+
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
+
     #else
+
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
-    
     return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
+
     #endif
 }
 
