@@ -45,7 +45,11 @@ static CallaterTable table = {0};
 
 struct timespec CallaterGetTimespec()
 {
-#ifdef _WIN32
+#if defined(__MINGW32__)
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts;
+#elif defined(_WIN32)
     struct timespec ts;
     timespec_get(&ts, TIME_UTC);
     return ts;
