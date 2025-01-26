@@ -109,7 +109,6 @@ static void CallaterCleanupTable()
             if(CALLATER_FLT_AS_INT(results[j]) == -1)
             {
                 CallaterPopFunc(i + j);
-                table.noopCount--;
             }
         }
     }
@@ -120,9 +119,10 @@ static void CallaterCleanupTable()
         if(CALLATER_FLT_AS_INT(table.invokeTimes[i + j]) == -1)
         {
             CallaterPopFunc(i + j);
-            table.noopCount--;
         }
     }
+    
+    table.noopCount = 0;
 }
 
 static void CallaterReallocTable(size_t newCap)
