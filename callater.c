@@ -7,9 +7,20 @@
 #include <immintrin.h>
 
 #ifdef _WIN32
+
 #include <windows.h>
 #include <sysinfoapi.h>
+
+#define CALLATER_M256_AT(vec, idx) vec.m256_f32[idx]
+
+#else
+
+#define CALLATER_M256_AT(vec, idx) vec[idx]
+
 #endif
+
+#define CALLATER_FLT_AS_INT(f) \
+((union{float asFloat; int32_t asInt;}){.asFloat = f}.asInt)
 
 typedef struct CallaterTable
 {
@@ -62,7 +73,7 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
     unsigned char newOffset = (char*)aligned - (char*)ret;
     
     if(newOffset != *offset)
-        memmove(aligned, ret + *offset, szmin(size, oldSize));
+        memmove(aligned, (char*)ret + *offset, szmin(size, oldSize));
     
     *offset = newOffset;
     return aligned;
@@ -97,9 +108,6 @@ static void CallaterPopFunc(size_t idx)
     table.count -= 1;
 }
 
-#define CALLATER_FLT_AS_INT(f) \
-((union{float asFloat; int32_t asInt;}){.asFloat = f}.asInt)
-
 static void CallaterCleanupTable()
 {
     __m256 infVec = _mm256_set1_ps(INFINITY);
@@ -108,10 +116,10 @@ static void CallaterCleanupTable()
     {
         __m256 curTimeVec = _mm256_load_ps(table.invokeTimes + i);
         __m256 results = _mm256_cmp_ps(curTimeVec, infVec, _CMP_EQ_OQ);
-        
+
         for(int j = 0 ; j < 8 ; j++)
         {
-            if(CALLATER_FLT_AS_INT(results[j]) == -1)
+            if(CALLATER_FLT_AS_INT( CALLATER_M256_AT(results, j) ) == -1)
             {
                 CallaterPopFunc(i + j);
             }
