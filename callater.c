@@ -42,21 +42,27 @@ typedef struct CallaterTable
 
 static CallaterTable table = {0};
 
-float CallaterCurrentTime()
+struct timespec CallaterGetTimespec()
 {
     #ifdef _WIN32
 
     struct timespec ts;
     timespec_get(&ts, TIME_UTC);
-    return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
+    return ts;
 
     #else
 
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
-    return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
+    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    return ts;
 
     #endif
+}
+
+float CallaterCurrentTime()
+{
+    struct timespec ts = CallaterGetTimespec();
+    return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
 }
 
 static size_t szmin(size_t a, size_t b)
@@ -88,8 +94,8 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
 void CallaterInit()
 {
     table = (CallaterTable){0};
-    
-    table.startSec = CallaterCurrentTime();
+
+    table.startSec = CallaterGetTimespec().tv_sec;
     table.count  = 0;
     table.cap    = 64;
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
