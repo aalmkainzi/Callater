@@ -93,9 +93,9 @@ void HandlePlayerMovement(PlayerCircle *p, Camera2D *cam)
 {
     Vector2 mousePos = GetMousePosition();
     Vector2 mouseWorld = GetScreenToWorld2D(mousePos, *cam);
-    float speed = Vector2Distance(mouseWorld, p->pos) / 16.0f;
-    speed = Clamp(speed, 0, 3.0f);
-    p->pos = Vector2MoveTowards(p->pos, mouseWorld, speed);
+    float speed = Vector2Distance(mouseWorld, p->pos);
+    speed = Clamp(speed, 0, 75.0f);
+    p->pos = Vector2MoveTowards(p->pos, mouseWorld, speed * GetFrameTime());
 }
 
 void HandleFoodEating(PlayerCircle *p, FoodData *foodData)
