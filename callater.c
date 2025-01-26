@@ -18,23 +18,27 @@ typedef struct CallaterTable
     size_t noopCount;
     void(**funcs)(void*);
     void **args;
+    uint64_t startSec;
     float *invokeTimes;
     float *originalDelays; // if neg, then no repeat
     float minInvokeTime;
     unsigned char delaysPtrOffset;
 } CallaterTable;
 
-static CallaterTable table;
+static CallaterTable table = {0};
 
 float CallaterCurrentTime()
 {
     #ifdef _WIN32
-    return GetTickCount64() / 1000.0f;
+    uint64_t tickCount = GetTickCount64();
+    uint64_t secs = tickCount / 1000;
+    uint64_t rem = tickCount % 1000;
+    return (secs - table.startSec) + (rem / 1000.0f);
     #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
     
-    return ts.tv_sec + ts.tv_nsec / 1000000000.0f;
+    return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
     #endif
 }
 
@@ -68,8 +72,9 @@ void CallaterInit()
 {
     table = (CallaterTable){0};
     
-    table.count = 0;
-    table.cap   = 64;
+    table.startSec = CallaterCurrentTime();
+    table.count  = 0;
+    table.cap    = 64;
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
     table.args   = calloc(table.cap, sizeof(*table.args));
     table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
