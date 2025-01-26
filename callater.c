@@ -34,6 +34,7 @@ typedef struct CallaterTable
     void(**funcs)(void*);
     void **args;
     uint64_t startSec;
+    uint64_t clockFreq;
     float *invokeTimes;
     float *originalDelays; // if neg, then no repeat
     float minInvokeTime;
@@ -44,25 +45,27 @@ static CallaterTable table = {0};
 
 struct timespec CallaterGetTimespec()
 {
-    #ifdef _WIN32
-
+#ifdef _WIN32
     struct timespec ts;
     timespec_get(&ts, TIME_UTC);
     return ts;
-
-    #else
-
+#else
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
     return ts;
-
-    #endif
+#endif
 }
 
 float CallaterCurrentTime()
 {
+#ifdef _WIN32
+    uint64_t time;
+    QueryPerformanceCounter((void*)&time);
+    return (time - table.startSec * table.clockFreq) / (float) table.clockFreq;
+#else
     struct timespec ts = CallaterGetTimespec();
     return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
+#endif
 }
 
 static size_t szmin(size_t a, size_t b)
@@ -94,8 +97,10 @@ static void *CallaterAlignedRealloc(void *ptr, size_t size, size_t oldSize, unsi
 void CallaterInit()
 {
     table = (CallaterTable){0};
-
-    table.startSec = CallaterGetTimespec().tv_sec;
+#ifdef _WIN32
+        QueryPerformanceFrequency((void*) &table.clockFreq);
+#endif
+    table.startSec = CallaterCurrentTime();
     table.count  = 0;
     table.cap    = 64;
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
