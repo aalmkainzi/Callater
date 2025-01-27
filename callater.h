@@ -34,8 +34,8 @@ void CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float fi
 // basically you should call this once every frame
 void CallaterUpdate();
 
-// gets the ref of a function that was added
-// if multiple occurances of `func` exist, gets a random one
+// gets the temporary ref of a function that was added
+// if multiple occurances of `func` exist, it doesn't necessarily get the next one to be invoked, nor the most newly inserted
 CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef));
 
 // remove all occurances of `func` from being invoked
