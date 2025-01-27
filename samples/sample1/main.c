@@ -14,7 +14,6 @@ typedef struct PlayerCircle
 
 typedef struct FoodData
 {
-    Vector2 bounds;
     Vector2 foods[1000];
     int nbFoods;
 } FoodData;
@@ -22,7 +21,10 @@ typedef struct FoodData
 void DrawPlayer(PlayerCircle *p);
 void HandlePlayerMovement(PlayerCircle *p, Camera2D *cam);
 void HandleFoodEating(PlayerCircle *p, FoodData *foodData);
-void SpawnRandomFood(void *bounds);
+void SpawnRandomFood(void *arg, CallaterRef invokeRef);
+
+int windowWidth = 1280;
+int windowHeight = 720;
 
 int main()
 {
@@ -37,16 +39,14 @@ int main()
     InitAudioDevice();
     Sound pop = LoadSound("resources/pop.wav");
     
-    FoodData foodData = {
-        .bounds = {GetScreenWidth(), GetScreenHeight()}
-    };
+    FoodData foodData = {0};
     
     PlayerCircle player = {
         .pos = {500, 500},
         .radius = 16
     };
     
-    InvokeRepeat(SpawnRandomFood, &foodData, 1.0f, 1.0f);
+    InvokeRepeat(SpawnRandomFood, &foodData, 0, 1.0f);
     
     while(!WindowShouldClose())
     {
@@ -97,19 +97,22 @@ void HandleFoodEating(PlayerCircle *p, FoodData *foodData)
     }
 }
 
-void SpawnRandomFood(void *foodData_)
+void SpawnRandomFood(void *arg, CallaterRef invokeRef)
 {
-    FoodData *foodData = foodData_;
+    FoodData *foodData = arg;
     if(foodData->nbFoods >= (sizeof(foodData->foods) / sizeof(foodData->foods[0])) - 1)
     {
         return;
     }
     
+    float repeatRate = CallaterRefGetRepeatRate(invokeRef);
+    CallaterRefSetRepeatRate(invokeRef, 5 * ((1.f * foodData->nbFoods) / (sizeof(foodData->foods) / sizeof(foodData->foods[0]))));
+    
     float xPercent = 1.0f * rand() / RAND_MAX;
     float yPercent = 1.0f * rand() / RAND_MAX;
     Vector2 newFoodPos = {
-        .x = xPercent * foodData->bounds.x,
-        .y = yPercent * foodData->bounds.y
+        .x = xPercent * windowWidth,
+        .y = yPercent * windowHeight
     };
     foodData->foods[foodData->nbFoods++] = newFoodPos;
 }
