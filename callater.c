@@ -335,27 +335,27 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef))
     return CALLATER_ERR_REF;
 }
 
-void CallaterRefStopRepeat(CallaterRef ref)
+void CallaterStopRepeat(CallaterRef ref)
 {
     table.repeatRates[ref] = -1;
 }
 
-void CallaterRefSetRepeatRate(CallaterRef ref, float newRepeatRate)
+void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate)
 {
     table.repeatRates[ref] = newRepeatRate;
 }
 
-void CallaterRefSetID(CallaterRef ref, uint64_t groupId)
+void CallaterSetID(CallaterRef ref, uint64_t groupId)
 {
     table.groupIDs[ref] = groupId;
 }
 
-float CallaterRefGetRepeatRate(CallaterRef ref)
+float CallaterGetRepeatRate(CallaterRef ref)
 {
     return table.repeatRates[ref];
 }
 
-uint64_t CallaterRefGetGroupID(CallaterRef ref)
+uint64_t CallaterGetID(CallaterRef ref)
 {
     return table.groupIDs[ref];
 }

@@ -44,18 +44,18 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef));
 // remove all invocations associated with `groupId`
 void CallaterCancelGroup(uint64_t groupId);
 
-// stops the referenced invocaton from repeating
-void CallaterRefStopRepeat(CallaterRef ref);
+// stops the referenced invocation from repeating
+void CallaterStopRepeat(CallaterRef ref);
 
 // changes the repeat rate of an invocation. Can also be used to make non-repeating invocation be repeating
-void CallaterRefSetRepeatRate(CallaterRef ref, float newRepeatRate);
+void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
 
 // changes the groupId of the referenced invocation
-void CallaterRefSetID(CallaterRef ref, uint64_t groupId);
+void CallaterSetID(CallaterRef ref, uint64_t groupId);
 
-float CallaterRefGetRepeatRate(CallaterRef ref);
+float CallaterGetRepeatRate(CallaterRef ref);
 
-uint64_t CallaterRefGetGroupID(CallaterRef ref);
+uint64_t CallaterGetID(CallaterRef ref);
 
 // realloc to match size
 void CallaterShrinkToFit();
