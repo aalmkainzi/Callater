@@ -100,7 +100,7 @@ void HandleFoodEating(PlayerCircle *p, FoodData *foodData)
 void SpawnRandomFood(void *arg, CallaterRef invokeRef)
 {
     FoodData *foodData = arg;
-    if(foodData->nbFoods >= (sizeof(foodData->foods) / sizeof(foodData->foods[0])) - 1)
+    if(foodData->nbFoods >= (sizeof(foodData->foods) / sizeof(foodData->foods[0])))
     {
         return;
     }
