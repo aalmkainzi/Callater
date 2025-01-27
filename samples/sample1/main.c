@@ -43,14 +43,7 @@ int main()
         exit(1);
     }
     
-    FoodData foodData =
-    {
-        .foods = {
-            {15,15},
-            {100,100},
-            {64,64}
-        },
-        .nbFoods = 3,
+    FoodData foodData = {
         .bounds = {GetScreenWidth(), GetScreenHeight()}
     };
     
