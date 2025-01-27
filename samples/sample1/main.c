@@ -37,12 +37,6 @@ int main()
     InitAudioDevice();
     Sound pop = LoadSound("resources/pop.wav");
     
-    if(!IsSoundValid(pop))
-    {
-        puts("err");
-        exit(1);
-    }
-    
     FoodData foodData = {
         .bounds = {GetScreenWidth(), GetScreenHeight()}
     };
