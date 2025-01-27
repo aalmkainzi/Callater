@@ -15,5 +15,10 @@ void SpawnEnemy(void *arg, CallaterRef invokeRef)
 void ShootAtPlayer(void *arg, CallaterRef invokeRef)
 {
     Enemy *enemy = arg;
+    gameState.player
+}
+
+void SpawnBullet(Vector2 pos, Vector2 dir)
+{
     
 }

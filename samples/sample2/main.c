@@ -13,7 +13,7 @@ int windowHeight = 720;
 
 float playerRadius = 10.0f;
 
-void DrawPlayer(Player *p);
+void DrawPlayer(void *p);
 void HandlePlayerInput(Player *p);
 void HandlePlayerMovement(Player *p);
 
@@ -23,6 +23,7 @@ int main()
     InitWindow(windowWidth, windowHeight, "bam");
     
     Player player = {
+        .drawPlayer = {.draw = DrawPlayer, .arg = &player},
         .pos = {500,500},
         .speed = 350.0f
     };
@@ -44,9 +45,10 @@ int main()
     }
 }
 
-void DrawPlayer(Player *p)
+void DrawPlayer(void *p)
 {
-    DrawCircleV(p->pos, playerRadius, PURPLE);
+    Player *player = p;
+    DrawCircleV(player->pos, playerRadius, PURPLE);
 }
 
 void HandlePlayerInput(Player *p)
