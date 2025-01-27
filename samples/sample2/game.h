@@ -32,13 +32,15 @@ typedef struct GameState
     
     Enemy *enemies;
     uint64_t nbEnemies;
+    uint64_t capEnemies;
     
     Drawable *drawables;
     uint64_t nbDrawables;
+    uint64_t capDrawables;
     
     Vector2 bounds;
 } GameState;
 
 extern GameState gameState;
 
-void AddDrawable(Drawable drawable);
+uint64_t AddDrawable(Drawable drawable);

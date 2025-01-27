@@ -99,3 +99,36 @@ void HandlePlayerMovement(Player *p)
     p->velocity.x = Lerp(p->velocity.x, 0, 0.5f * GetFrameTime());
     p->velocity.y = Lerp(p->velocity.y, 0, 0.5f * GetFrameTime());
 }
+
+void DrawAll()
+{
+    for(uint64_t i = 0 ; i < gameState.nbDrawables ; i++)
+    {
+        gameState.drawables[i].draw(gameState.drawables[i].arg);
+    }
+}
+
+void NoopDraw(void *arg)
+{
+    (void)arg;
+}
+
+void RemoveDrawable(uint64_t idx)
+{
+    gameState.drawables[idx] = (Drawable){.draw = NoopDraw, .arg = NULL};
+}
+
+// for now this just pushes to the back.
+// I should look for empty spots in the array to populate instead
+uint64_t AddDrawable(Drawable drawable)
+{
+    if(gameState.nbDrawables >= gameState.capDrawables)
+    {
+        gameState.capDrawables *= 2;
+        gameState.drawables = realloc(gameState.drawables, gameState.capDrawables);
+    }
+    
+    gameState.drawables[gameState.nbDrawables] = drawable;
+    gameState.nbDrawables += 1;
+    return gameState.nbDrawables - 1;
+}
