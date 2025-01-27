@@ -1,6 +1,5 @@
 #include "callater.h"
 #include <math.h>
-#include <profileapi.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
