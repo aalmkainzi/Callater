@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include <immintrin.h>
 
 #ifdef _WIN32
@@ -114,6 +115,7 @@ void CallaterInit()
     table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
     table.repeatRates = malloc(table.cap * sizeof(*table.repeatRates));
     table.groupIDs = calloc(table.cap, sizeof(*table.groupIDs));
+    table.nextEmptySpot = 0;
     
     table.minInvokeTime = INFINITY;
 }
@@ -127,12 +129,19 @@ static void CallaterNoop(void *arg, CallaterRef ref)
 static void CallaterPopFunc(uint64_t idx)
 {
     // TODO emptySpots
-    table.funcs[idx] = table.funcs[table.count - 1];
-    table.invokeTimes[idx] = table.invokeTimes[table.count - 1];
-    table.args[idx]  = table.args[table.count - 1];
-    table.repeatRates[idx] = table.repeatRates[table.count - 1];
-    table.groupIDs[idx] = table.groupIDs[table.count - 1];
-    table.count -= 1;
+    // table.funcs[idx] = table.funcs[table.count - 1];
+    // table.invokeTimes[idx] = table.invokeTimes[table.count - 1];
+    // table.args[idx]  = table.args[table.count - 1];
+    // table.repeatRates[idx] = table.repeatRates[table.count - 1];
+    // table.groupIDs[idx] = table.groupIDs[table.count - 1];
+    // table.count -= 1;
+    
+    table.funcs[idx] = CallaterNoop;
+    table.args[idx] = NULL;
+    table.invokeTimes[idx] = INFINITY;
+    table.groupIDs[idx] = 0;
+    table.repeatRates[idx] = INFINITY;
+    table.noopCount++;
 }
 
 // static void CallaterCleanupTable()
@@ -182,13 +191,15 @@ static void CallaterReallocTable(uint64_t newCap)
     table.cap = newCap;
 }
 
-static void CallaterMaybeGrowTable()
+static bool CallaterMaybeGrowTable()
 {
     if(table.cap <= table.count)
     {
         const uint64_t newCap = table.cap * 2;
         CallaterReallocTable(newCap);
+        return true;
     }
+    return false;
 }
 
 static void CallaterCallFunc(uint64_t idx, float curTime)
@@ -196,10 +207,11 @@ static void CallaterCallFunc(uint64_t idx, float curTime)
     table.funcs[idx](table.args[idx], idx);
     if(table.repeatRates[idx] < 0)
     {
-        table.funcs[idx] = CallaterNoop;
-        table.invokeTimes[idx] = INFINITY;
-        table.groupIDs[idx] = 0;
-        table.noopCount++;
+        // table.funcs[idx] = CallaterNoop;
+        // table.invokeTimes[idx] = INFINITY;
+        // table.groupIDs[idx] = 0;
+        // table.noopCount++;
+        CallaterPopFunc(idx);
     }
     else
     {
@@ -261,44 +273,84 @@ void CallaterUpdate()
     CallaterTick(curTime);
 }
 
-void CallaterInvoke(void(*func)(void*, CallaterRef), void* arg, float delay)
+CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void* arg, float delay)
 {
-    CallaterInvokeID(func, arg, delay, 0);
+    return CallaterInvokeID(func, arg, delay, 0);
 }
 
-void CallaterInvokeNull(void(*func)(void*, CallaterRef), float delay)
+CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId)
 {
-    CallaterInvoke(func, NULL, delay);
-}
-
-void CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId)
-{
-    CallaterMaybeGrowTable();
+    if(table.nextEmptySpot == (uint64_t)-1)
+    {
+        CallaterMaybeGrowTable();
+        table.nextEmptySpot = table.count;
+        table.count += 1;
+    }
+    else if(table.nextEmptySpot != table.count)
+    {
+        // next empty spot is in the middle of the array
+        // aka we're taking the spot of a noop and not increasing size
+        table.noopCount -= 1;
+    }
+    else
+    {
+        // next empty spot is at the back
+        table.count += 1;
+    }
     
     float curTime = CallaterCurrentTime();
     
-    table.funcs[table.count] = func;
-    table.invokeTimes[table.count] = delay + curTime;
-    table.args[table.count] = arg;
-    table.repeatRates[table.count] = -1;
-    table.groupIDs[table.count] = groupId;
-    table.count += 1;
+    uint64_t nextSpot = table.nextEmptySpot;
+    table.funcs      [nextSpot] = func;
+    table.invokeTimes[nextSpot] = delay + curTime;
+    table.args       [nextSpot] = arg;
+    table.repeatRates[nextSpot] = -1;
+    table.groupIDs   [nextSpot] = groupId;
     
-    if(table.invokeTimes[table.count] < table.minInvokeTime)
+    if(table.invokeTimes[nextSpot] < table.minInvokeTime)
     {
-        table.minInvokeTime = table.invokeTimes[table.count];
+        table.minInvokeTime = table.invokeTimes[nextSpot];
     }
+    
+    // assigning a new table.nextEmptySpot
+    if(table.noopCount == 0)
+    {
+        if(table.count >= table.cap)
+        {
+            table.nextEmptySpot = (uint64_t)-1;
+        }
+        else
+        {
+            table.nextEmptySpot = table.count;
+        }
+    }
+    else
+    {
+        uint64_t nextEmptySpot = (uint64_t)-1;
+        for(uint64_t i = 0 ; i < table.count ; i++)
+        {
+            if(table.funcs[i] == CallaterNoop)
+            {
+                nextEmptySpot = i;
+                break;
+            }
+        }
+        table.nextEmptySpot = nextEmptySpot;
+    }
+    
+    return nextSpot;
 }
 
-void CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate)
+CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate)
 {
-    CallaterInvokeRepeatID(func, arg, firstDelay, repeatRate, 0);
+    return CallaterInvokeRepeatID(func, arg, firstDelay, repeatRate, 0);
 }
 
-void CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId)
+CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId)
 {
-    CallaterInvokeID(func, arg, firstDelay, groupId);
-    table.repeatRates[table.count - 1] = repeatRate;
+    CallaterRef ret = CallaterInvokeID(func, arg, firstDelay, groupId);
+    CallaterSetRepeatRate(ret, repeatRate);
+    return ret;
 }
 
 void CallaterCancelGroup(uint64_t groupId)
@@ -308,7 +360,7 @@ void CallaterCancelGroup(uint64_t groupId)
         if(table.groupIDs[i] == groupId)
         {
             CallaterPopFunc(i);
-            i--;
+            // i--;
         }
     }
 }
@@ -320,7 +372,7 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef))
         if(table.funcs[i] == func)
         {
             CallaterPopFunc(i);
-            i--;
+            // i--;
         }
     }
 }
@@ -364,8 +416,8 @@ uint64_t CallaterGetID(CallaterRef ref)
 
 void CallaterShrinkToFit()
 {
-    if(table.noopCount >= 8)
-        CallaterCleanupTable();
+    //if(table.noopCount >= 8)
+        //CallaterCleanupTable();
     
     CallaterReallocTable(table.count);
 }

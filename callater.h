@@ -20,15 +20,15 @@ typedef uint64_t CallaterRef;
 void CallaterInit();
 
 // adds the function `func` to be called after `delay` time, with `arg` passed to it
-void CallaterInvoke(void(*func)(void*, CallaterRef), void *arg, float delay);
+CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void *arg, float delay);
 
 // same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelGroup(uint64_t groupId)`)
-void CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
+CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
 
 // calls `func` after `firstDelay` seconds, then every `repeatRate` seconds
-void CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate);
+CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate);
 
-void CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId);
+CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId);
 
 // this must be called for the functions added with `CallaterInvoke` to actually get invoked
 // basically you should call this once every frame
