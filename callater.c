@@ -128,14 +128,6 @@ static void CallaterNoop(void *arg, CallaterRef ref)
 
 static void CallaterPopFunc(uint64_t idx)
 {
-    // TODO emptySpots
-    // table.funcs[idx] = table.funcs[table.count - 1];
-    // table.invokeTimes[idx] = table.invokeTimes[table.count - 1];
-    // table.args[idx]  = table.args[table.count - 1];
-    // table.repeatRates[idx] = table.repeatRates[table.count - 1];
-    // table.groupIDs[idx] = table.groupIDs[table.count - 1];
-    // table.count -= 1;
-    
     table.funcs[idx] = CallaterNoop;
     table.args[idx] = NULL;
     table.invokeTimes[idx] = INFINITY;
@@ -143,36 +135,6 @@ static void CallaterPopFunc(uint64_t idx)
     table.repeatRates[idx] = INFINITY;
     table.noopCount++;
 }
-
-// static void CallaterCleanupTable()
-// {
-//     __m256 infVec = _mm256_set1_ps(INFINITY);
-//     uint64_t i;
-//     for(i = 0 ; i + 7 < table.count ; i += 8)
-//     {
-//         __m256 curTimeVec = _mm256_load_ps(table.invokeTimes + i);
-//         __m256 results = _mm256_cmp_ps(curTimeVec, infVec, _CMP_EQ_OQ);
-// 
-//         for(int j = 0 ; j < 8 ; j++)
-//         {
-//             if(CALLATER_FLT_AS_INT( CALLATER_M256_AT(results, j) ) == -1)
-//             {
-//                 CallaterPopFunc(i + j);
-//             }
-//         }
-//     }
-//     
-//     int remaining = table.count - i;
-//     for(int j = 0 ; j < remaining ; j++)
-//     {
-//         if(CALLATER_FLT_AS_INT(table.invokeTimes[i + j]) == -1)
-//         {
-//             CallaterPopFunc(i + j);
-//         }
-//     }
-//     
-//     table.noopCount = 0;
-// }
 
 static void CallaterReallocTable(uint64_t newCap)
 {
@@ -207,10 +169,6 @@ static void CallaterCallFunc(uint64_t idx, float curTime)
     table.funcs[idx](table.args[idx], idx);
     if(table.repeatRates[idx] < 0)
     {
-        // table.funcs[idx] = CallaterNoop;
-        // table.invokeTimes[idx] = INFINITY;
-        // table.groupIDs[idx] = 0;
-        // table.noopCount++;
         CallaterPopFunc(idx);
     }
     else
@@ -265,8 +223,6 @@ void CallaterUpdate()
     float curTime = CallaterCurrentTime();
     if(curTime < table.minInvokeTime)
     {
-        // if(table.noopCount > table.count / 2)
-        //     CallaterCleanupTable();
         return;
     }
     
@@ -394,6 +350,11 @@ void CallaterStopRepeat(CallaterRef ref)
     table.repeatRates[ref] = -1;
 }
 
+void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef))
+{
+    table.funcs[ref] = func;
+}
+
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate)
 {
     table.repeatRates[ref] = newRepeatRate;
@@ -416,9 +377,6 @@ uint64_t CallaterGetID(CallaterRef ref)
 
 void CallaterShrinkToFit()
 {
-    //if(table.noopCount >= 8)
-        //CallaterCleanupTable();
-    
     CallaterReallocTable(table.count);
 }
 

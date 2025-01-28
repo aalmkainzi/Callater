@@ -47,6 +47,9 @@ void CallaterCancelGroup(uint64_t groupId);
 // stops the referenced invocation from repeating
 void CallaterStopRepeat(CallaterRef ref);
 
+// changes the function to be invoked
+void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
+
 // changes the repeat rate of an invocation. Can also be used to make non-repeating invocation be repeating
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
 

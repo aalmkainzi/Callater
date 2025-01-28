@@ -105,8 +105,7 @@ void SpawnRandomFood(void *arg, CallaterRef invokeRef)
         return;
     }
     
-    float repeatRate = CallaterRefGetRepeatRate(invokeRef);
-    CallaterRefSetRepeatRate(invokeRef, 5 * ((1.f * foodData->nbFoods) / (sizeof(foodData->foods) / sizeof(foodData->foods[0]))));
+    CallaterSetRepeatRate(invokeRef, 5 * (foodData->nbFoods / 1000.0f));
     
     float xPercent = 1.0f * rand() / RAND_MAX;
     float yPercent = 1.0f * rand() / RAND_MAX;
