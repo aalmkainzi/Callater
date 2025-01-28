@@ -221,7 +221,7 @@ static void CallaterTick(float curTime)
     if(table.funcs[table.lastRealInvocation] == CallaterNoop)
     {
         table.lastRealInvocation = -1;
-        for(uint64_t i = table.lastRealInvocation - 1 ; i >= 0 ; i--)
+        for(uint64_t i = table.lastRealInvocation - 1 ; i != (uint64_t)-1 ; i--)
         {
             if(table.funcs[i] != CallaterNoop)
             {
