@@ -47,6 +47,9 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef));
 // remove all invocations associated with `groupId`
 void CallaterCancelGroup(uint64_t groupId);
 
+// removes the referenced invocation
+void CallaterCancel(CallaterRef ref);
+
 // changes the function to be invoked
 void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
 

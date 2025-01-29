@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <immintrin.h>
+#include <wingdi.h>
 
 #ifdef _WIN32
 
@@ -178,6 +179,20 @@ static void CallaterCallFunc(uint64_t idx, float curTime)
     }
 }
 
+static void CallaterFindNewLastInvocation(uint64_t startFrom)
+{
+    uint64_t newLastRealInvocation = -1;
+    for(uint64_t i = startFrom ; i != (uint64_t)-1 ; i--)
+    {
+        if(table.funcs[i] != CallaterNoop)
+        {
+            newLastRealInvocation = i;
+            break;
+        }
+    }
+    table.lastRealInvocation = newLastRealInvocation;
+}
+
 static void CallaterTick(float curTime)
 {
     const __m256 curTimeVec = _mm256_set1_ps(curTime);
@@ -220,15 +235,7 @@ static void CallaterTick(float curTime)
     
     if(table.funcs[table.lastRealInvocation] == CallaterNoop)
     {
-        table.lastRealInvocation = -1;
-        for(uint64_t i = table.lastRealInvocation - 1 ; i != (uint64_t)-1 ; i--)
-        {
-            if(table.funcs[i] != CallaterNoop)
-            {
-                table.lastRealInvocation = i;
-                break;
-            }
-        }
+        CallaterFindNewLastInvocation(table.lastRealInvocation - 1);
     }
 }
 
@@ -368,6 +375,15 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef))
     return CALLATER_ERR_REF;
 }
 
+void CallaterCancel(CallaterRef ref)
+{
+    CallaterPopFunc(ref);
+    if(ref == table.lastRealInvocation)
+    {
+        CallaterFindNewLastInvocation(table.lastRealInvocation - 1);
+    }
+}
+
 void CallaterStopRepeat(CallaterRef ref)
 {
     table.repeatRates[ref] = -1;
@@ -433,5 +449,6 @@ void CallaterDeinit()
     free(table.args);
     free(table.invokeTimes - table.delaysPtrOffset);
     free(table.repeatRates);
+    free(table.groupIDs);
     table = (CallaterTable){0};
 }
