@@ -20,12 +20,15 @@ typedef uint64_t CallaterRef;
 void CallaterInit();
 
 // adds the function `func` to be called after `delay` time, with `arg` passed to it
+// Returns the reference to the invocation
 CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void *arg, float delay);
 
 // same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelGroup(uint64_t groupId)`)
+// Returns the reference to the invocation
 CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
 
 // calls `func` after `firstDelay` seconds, then every `repeatRate` seconds
+// Returns the reference to the invocation
 CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate);
 
 CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId);
@@ -34,7 +37,7 @@ CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, f
 // basically you should call this once every frame
 void CallaterUpdate();
 
-// gets the temporary ref of a function that was added
+// gets the invocation reference of a function that was added
 // if multiple occurances of `func` exist, it doesn't necessarily get the next one to be invoked, nor the most newly inserted
 CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef));
 
@@ -44,11 +47,11 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef));
 // remove all invocations associated with `groupId`
 void CallaterCancelGroup(uint64_t groupId);
 
-// stops the referenced invocation from repeating
-void CallaterStopRepeat(CallaterRef ref);
-
 // changes the function to be invoked
 void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
+
+// stops the referenced invocation from repeating
+void CallaterStopRepeat(CallaterRef ref);
 
 // changes the repeat rate of an invocation. Can also be used to make non-repeating invocation be repeating
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
