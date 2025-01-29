@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <immintrin.h>
-#include <wingdi.h>
 
 #ifdef _WIN32
 
