@@ -202,13 +202,17 @@ static void CallaterTick(float curTime)
         __m256 tableDelaysVec = _mm256_load_ps(table.invokeTimes + i);
         __m256 results = _mm256_cmp_ps(curTimeVec, tableDelaysVec, _CMP_GE_OQ);
         
-        const int(*asInts)[8] = (void*)&results;
-        for(int j = 0 ; j < 8 ; j++)
+        int mask = _mm256_movemask_ps(results);
+        while (mask != 0)
         {
-            if((*asInts)[j])
-            {
-                CallaterCallFunc(i + j, curTime);
-            }
+            unsigned long bit;
+            #ifdef _MSC_VER
+            _BitScanForward(&bit, mask);
+            #else
+            bit = __builtin_ctz(mask);
+            #endif
+            mask &= ~(1 << bit);
+            CallaterCallFunc(i + bit, curTime);
         }
     }
     
