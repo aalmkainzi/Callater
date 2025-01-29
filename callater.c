@@ -206,11 +206,11 @@ static void CallaterTick(float curTime)
         while (mask != 0)
         {
             unsigned long bit;
-            #ifdef _MSC_VER
+#ifdef _MSC_VER
             _BitScanForward(&bit, mask);
-            #else
+#else
             bit = __builtin_ctz(mask);
-            #endif
+#endif
             mask &= ~(1 << bit);
             CallaterCallFunc(i + bit, curTime);
         }
