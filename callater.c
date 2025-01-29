@@ -398,6 +398,30 @@ uint64_t CallaterGetID(CallaterRef ref)
     return table.groupIDs[ref];
 }
 
+uint64_t CallaterGroupCount(uint64_t groupId)
+{
+    uint64_t count = 0;
+    for(uint64_t i = 0 ; i < table.lastRealInvocation ; i++)
+    {
+        count += (table.groupIDs[i] == groupId);
+    }
+    return count;
+}
+
+uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
+{
+    uint64_t count = 0;
+    for(uint64_t i = 0 ; i < table.lastRealInvocation ; i++)
+    {
+        if(table.groupIDs[i] == groupId)
+        {
+            refsOut[count] = i;
+            count += 1;
+        }
+    }
+    return count;
+}
+
 void CallaterShrinkToFit()
 {
     CallaterReallocTable(table.count);

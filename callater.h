@@ -54,6 +54,7 @@ void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
 void CallaterStopRepeat(CallaterRef ref);
 
 // changes the repeat rate of an invocation. Can also be used to make non-repeating invocation be repeating
+// NOTE the new repeat rate will only take effect after the next repeat
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
 
 // changes the groupId of the referenced invocation
@@ -62,6 +63,13 @@ void CallaterSetID(CallaterRef ref, uint64_t groupId);
 float CallaterGetRepeatRate(CallaterRef ref);
 
 uint64_t CallaterGetID(CallaterRef ref);
+
+// returns the number of invocations associated with `groupId`
+uint64_t CallaterGroupCount(uint64_t groupId);
+
+// fills the array `refsOut` with the invocation references associated with `groupId`
+// returns the number of references that were added to the pointer
+uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId);
 
 // realloc to match size
 void CallaterShrinkToFit();
