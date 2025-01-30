@@ -7,8 +7,8 @@
     
     #define Invoke         CallaterInvoke
     #define InvokeRepeat   CallaterInvokeRepeat
-    #define InvokeID       CallaterInvokeID
-    #define InvokeRepeatID CallaterInvokeRepeatID
+    #define InvokeGID       CallaterInvokeGID
+    #define InvokeRepeatGID CallaterInvokeRepeatGID
     
 #endif
 

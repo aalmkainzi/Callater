@@ -91,11 +91,11 @@ void TestGroupCancellation() {
     setup();
     
     const uint64_t GROUP_ID = 42;
-    CallaterInvokeID(GroupCallback, NULL, 0.1f, GROUP_ID);
-    CallaterInvokeID(GroupCallback, NULL, 0.2f, GROUP_ID);
-    CallaterInvokeID(GroupCallback, NULL, 0.3f, GROUP_ID);
+    CallaterInvokeGID(GroupCallback, NULL, 0.1f, GROUP_ID);
+    CallaterInvokeGID(GroupCallback, NULL, 0.2f, GROUP_ID);
+    CallaterInvokeGID(GroupCallback, NULL, 0.3f, GROUP_ID);
     
-    CallaterCancelID(GROUP_ID);
+    CallaterCancelGID(GROUP_ID);
     
     mock_current_time = 1.0f;
     CallaterUpdate();
@@ -160,12 +160,12 @@ void TestStressTest() {
     ASSERT(multi_callback_count == NUM_CALLBACKS);
 }
 
-void TestRepeatInvocationWithID() {
+void TestRepeatInvocationWithGID() {
     TEST("Repeated invocation with ID");
     setup();
     
     const uint64_t GROUP_ID = 123;
-    CallaterRef ref = CallaterInvokeRepeatID(RepeatCallback, NULL, 0.5f, 1.0f, GROUP_ID);
+    CallaterRef ref = CallaterInvokeRepeatGID(RepeatCallback, NULL, 0.5f, 1.0f, GROUP_ID);
     
     // First invocation
     mock_current_time = 0.6f;
@@ -178,7 +178,7 @@ void TestRepeatInvocationWithID() {
     ASSERT(repeat_callback_count == 2);
     
     // Check group ID
-    ASSERT(CallaterGetID(ref) == GROUP_ID);
+    ASSERT(CallaterGetGID(ref) == GROUP_ID);
 }
 
 void TestSetFunction() {
@@ -217,15 +217,15 @@ void TestSetRepeatRate() {
     ASSERT(repeat_callback_count == 2);
 }
 
-void TestSetID() {
+void TestSetGID() {
     TEST("Set ID");
     setup();
     
     CallaterRef ref = CallaterInvoke(BasicCallback, NULL, 0.5f);
     const uint64_t GROUP_ID = 456;
-    CallaterSetID(ref, GROUP_ID);
+    CallaterSetGID(ref, GROUP_ID);
     
-    ASSERT(CallaterGetID(ref) == GROUP_ID);
+    ASSERT(CallaterGetGID(ref) == GROUP_ID);
 }
 
 void TestGetRepeatRate() {
@@ -244,9 +244,9 @@ void TestGroupCount() {
     setup();
     
     const uint64_t GROUP_ID = 789;
-    CallaterInvokeID(BasicCallback, NULL, 0.1f, GROUP_ID);
-    CallaterInvokeID(BasicCallback, NULL, 0.2f, GROUP_ID);
-    CallaterInvokeID(BasicCallback, NULL, 0.3f, GROUP_ID);
+    CallaterInvokeGID(BasicCallback, NULL, 0.1f, GROUP_ID);
+    CallaterInvokeGID(BasicCallback, NULL, 0.2f, GROUP_ID);
+    CallaterInvokeGID(BasicCallback, NULL, 0.3f, GROUP_ID);
     
     ASSERT(CallaterGroupCount(GROUP_ID) == 3);
 }
@@ -266,9 +266,9 @@ void TestGetGroupRefs() {
     
     const uint64_t GROUP_ID = 101;
     CallaterRef refs[3];
-    CallaterRef r1 = CallaterInvokeID(BasicCallback, NULL, 0.1f, GROUP_ID);
-    CallaterRef r2 = CallaterInvokeID(BasicCallback, NULL, 0.2f, GROUP_ID);
-    CallaterRef r3 = CallaterInvokeID(BasicCallback, NULL, 0.3f, GROUP_ID);
+    CallaterRef r1 = CallaterInvokeGID(BasicCallback, NULL, 0.1f, GROUP_ID);
+    CallaterRef r2 = CallaterInvokeGID(BasicCallback, NULL, 0.2f, GROUP_ID);
+    CallaterRef r3 = CallaterInvokeGID(BasicCallback, NULL, 0.3f, GROUP_ID);
     
     uint64_t count = CallaterGetGroupRefs(refs, GROUP_ID);
     ASSERT(RefsContain(refs, count, r1) && RefsContain(refs, count, r2) && RefsContain(refs, count, r3));
@@ -331,7 +331,7 @@ void TestCancelDuringCallback() {
 void ChangeGroupIdCallback(void* arg, CallaterRef ref) {
     group_callback_count++;
     // Change the group ID during the callback
-    CallaterSetID(ref, *(uint64_t*)arg);
+    CallaterSetGID(ref, *(uint64_t*)arg);
 }
 
 void TestChangeGroupIdDuringCallback() {
@@ -340,13 +340,13 @@ void TestChangeGroupIdDuringCallback() {
     
     uint64_t NEW_GROUP_ID = 999;
     
-    CallaterRef ref = InvokeRepeatID(ChangeGroupIdCallback, &NEW_GROUP_ID, 0.5f, 0.5f, 6969);
+    CallaterRef ref = InvokeRepeatGID(ChangeGroupIdCallback, &NEW_GROUP_ID, 0.5f, 0.5f, 6969);
     
     // First invocation
     mock_current_time = 0.6f;
     CallaterUpdate();
     ASSERT(group_callback_count == 1);
-    ASSERT(CallaterGetID(ref) == NEW_GROUP_ID);
+    ASSERT(CallaterGetGID(ref) == NEW_GROUP_ID);
 }
 
 void NewFunctionCallback(void* arg, CallaterRef ref) {
@@ -414,10 +414,10 @@ int main() {
     TestReferenceManagement();
     TestStressTest();
     
-    TestRepeatInvocationWithID();
+    TestRepeatInvocationWithGID();
     TestSetFunction();
     TestSetRepeatRate();
-    TestSetID();
+    TestSetGID();
     TestGetRepeatRate();
     TestGroupCount();
     TestGetGroupRefs();
