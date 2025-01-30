@@ -131,7 +131,7 @@ static void CallaterNoop(void *arg, CallaterRef ref)
     (void)ref;
 }
 
-static void CallaterPopFunc(uint64_t idx)
+static void CallaterPopInvoke(uint64_t idx)
 {
     table.funcs[idx] = CallaterNoop;
     table.args[idx] = NULL;
@@ -174,7 +174,7 @@ static void CallaterCallFunc(uint64_t idx, float curTime)
     table.funcs[idx](table.args[idx], idx);
     if(table.repeatRates[idx] < 0)
     {
-        CallaterPopFunc(idx);
+        CallaterPopInvoke(idx);
     }
     else
     {
@@ -359,7 +359,7 @@ void CallaterCancelGroup(uint64_t groupId)
     {
         if(table.groupIDs[i] == groupId)
         {
-            CallaterPopFunc(i);
+            CallaterPopInvoke(i);
         }
     }
 }
@@ -370,7 +370,7 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef))
     {
         if(table.funcs[i] == func)
         {
-            CallaterPopFunc(i);
+            CallaterPopInvoke(i);
         }
     }
 }
@@ -389,7 +389,7 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef))
 
 void CallaterCancel(CallaterRef ref)
 {
-    CallaterPopFunc(ref);
+    CallaterPopInvoke(ref);
     if(ref == table.lastRealInvocation)
     {
         CallaterFindNewLastInvocation(table.lastRealInvocation - 1);

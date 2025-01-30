@@ -405,7 +405,7 @@ void TestStopRepeatDuringCallback() {
 }
 
 int main() {
-    printf("Starting Callater test suite\n");
+    printf("Starting Callater tests\n");
     
     TestBasicInvocation();
     TestRepeatInvocation();
@@ -415,7 +415,6 @@ int main() {
     TestReferenceManagement();
     TestStressTest();
     
-    // New tests
     TestRepeatInvocationWithID();
     TestSetFunction();
     TestSetRepeatRate();
@@ -424,7 +423,6 @@ int main() {
     TestGroupCount();
     TestGetGroupRefs();
     
-    // Tests for modifying invocation during callback
     TestModifyRepeatRateDuringCallback();
     TestCancelDuringCallback();
     TestChangeGroupIdDuringCallback();
