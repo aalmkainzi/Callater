@@ -136,7 +136,7 @@ static void CallaterPopInvoke(uint64_t idx)
     table.funcs[idx] = CallaterNoop;
     table.args[idx] = NULL;
     table.invokeTimes[idx] = INFINITY;
-    table.groupIDs[idx] = 0;
+    table.groupIDs[idx] = (uint64_t)-1;
     table.repeatRates[idx] = INFINITY;
     table.noopCount++;
 }
@@ -261,7 +261,7 @@ void CallaterUpdate()
 
 CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void* arg, float delay)
 {
-    return CallaterInvokeID(func, arg, delay, 0);
+    return CallaterInvokeID(func, arg, delay, (uint64_t)-1);
 }
 
 CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId)
@@ -338,7 +338,7 @@ CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float d
 
 CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate)
 {
-    return CallaterInvokeRepeatID(func, arg, firstDelay, repeatRate, 0);
+    return CallaterInvokeRepeatID(func, arg, firstDelay, repeatRate, (uint64_t)-1);
 }
 
 CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId)

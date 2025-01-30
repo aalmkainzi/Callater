@@ -25,6 +25,7 @@ CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void *arg, float del
 
 // same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelGroup(uint64_t groupId)`)
 // Returns the reference to the invocation
+// NOTE groupId -1 is reserved
 CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
 
 // calls `func` after `firstDelay` seconds, then every `repeatRate` seconds
