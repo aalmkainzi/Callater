@@ -12,9 +12,12 @@
     
 #endif
 
-#define CALLATER_ERR_REF ((CallaterRef)-1)
+#define CALLATER_ERR_REF ((CallaterRef){(uint64_t)-1})
 
-typedef uint64_t CallaterRef;
+typedef struct CallaterRef
+{
+    uint64_t ref;
+} CallaterRef;
 
 // initialize the Callater context
 void CallaterInit();
@@ -23,7 +26,7 @@ void CallaterInit();
 // Returns the reference to the invocation
 CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void *arg, float delay);
 
-// same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelGroup(uint64_t groupId)`)
+// same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelID(uint64_t groupId)`)
 // Returns the reference to the invocation
 // NOTE groupId -1 is reserved
 CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
@@ -49,7 +52,7 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef));
 void CallaterCancelFunc(void(*func)(void*, CallaterRef));
 
 // remove all invocations associated with `groupId`
-void CallaterCancelGroup(uint64_t groupId);
+void CallaterCancelID(uint64_t groupId);
 
 // removes the referenced invocation
 void CallaterCancel(CallaterRef ref);
