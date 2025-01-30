@@ -261,10 +261,10 @@ void CallaterUpdate()
 
 CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void* arg, float delay)
 {
-    return CallaterInvokeID(func, arg, delay, (uint64_t)-1);
+    return CallaterInvokeGID(func, arg, delay, (uint64_t)-1);
 }
 
-CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId)
+CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId)
 {
     if(table.nextEmptySpot == (uint64_t)-1)
     {
@@ -332,18 +332,17 @@ CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float d
             table.nextEmptySpot = nextEmptySpot;
         }
     }
-    
     return (CallaterRef){nextSpot};
 }
 
 CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate)
 {
-    return CallaterInvokeRepeatID(func, arg, firstDelay, repeatRate, (uint64_t)-1);
+    return CallaterInvokeRepeatGID(func, arg, firstDelay, repeatRate, (uint64_t)-1);
 }
 
-CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId)
+CallaterRef CallaterInvokeRepeatGID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId)
 {
-    CallaterRef ret = CallaterInvokeID(func, arg, firstDelay, groupId);
+    CallaterRef ret = CallaterInvokeGID(func, arg, firstDelay, groupId);
     CallaterSetRepeatRate(ret, repeatRate);
     return ret;
 }
@@ -353,7 +352,7 @@ float CallaterInvokesAfter(CallaterRef ref)
     return CallaterCurrentTime() - table.invokeTimes[ref.ref];
 }
 
-void CallaterCancelID(uint64_t groupId)
+void CallaterCancelGID(uint64_t groupId)
 {
     for(uint64_t i = 0 ; i < table.count ; i++)
     {
@@ -411,7 +410,7 @@ void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate)
     table.repeatRates[ref.ref] = newRepeatRate;
 }
 
-void CallaterSetID(CallaterRef ref, uint64_t groupId)
+void CallaterSetGID(CallaterRef ref, uint64_t groupId)
 {
     table.groupIDs[ref.ref] = groupId;
 }
@@ -421,7 +420,7 @@ float CallaterGetRepeatRate(CallaterRef ref)
     return table.repeatRates[ref.ref];
 }
 
-uint64_t CallaterGetID(CallaterRef ref)
+uint64_t CallaterGetGID(CallaterRef ref)
 {
     return table.groupIDs[ref.ref];
 }

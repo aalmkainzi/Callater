@@ -26,16 +26,16 @@ void CallaterInit();
 // Returns the reference to the invocation
 CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void *arg, float delay);
 
-// same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelID(uint64_t groupId)`)
+// same as `CallaterInvoke`, except you can use `groupId` as a handle to the invocations (e.g. when using `CallaterCancelGID(uint64_t groupId)`)
 // Returns the reference to the invocation
 // NOTE groupId -1 is reserved
-CallaterRef CallaterInvokeID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
+CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId);
 
 // calls `func` after `firstDelay` seconds, then every `repeatRate` seconds
 // Returns the reference to the invocation
 CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate);
 
-CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId);
+CallaterRef CallaterInvokeRepeatGID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId);
 
 // this must be called for the invocations added to actually get called
 // basically you should call this once every frame
@@ -52,7 +52,7 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef));
 void CallaterCancelFunc(void(*func)(void*, CallaterRef));
 
 // remove all invocations associated with `groupId`
-void CallaterCancelID(uint64_t groupId);
+void CallaterCancelGID(uint64_t groupId);
 
 // removes the referenced invocation
 void CallaterCancel(CallaterRef ref);
@@ -68,11 +68,11 @@ void CallaterStopRepeat(CallaterRef ref);
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
 
 // changes the groupId of the referenced invocation
-void CallaterSetID(CallaterRef ref, uint64_t groupId);
+void CallaterSetGID(CallaterRef ref, uint64_t groupId);
 
 float CallaterGetRepeatRate(CallaterRef ref);
 
-uint64_t CallaterGetID(CallaterRef ref);
+uint64_t CallaterGetGID(CallaterRef ref);
 
 // returns the number of invocations associated with `groupId`
 uint64_t CallaterGroupCount(uint64_t groupId);

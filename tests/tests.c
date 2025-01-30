@@ -153,7 +153,6 @@ void TestStressTest() {
     
     mock_current_time = 5;
     CallaterUpdate();
-    printf("count: %d\n", multi_callback_count);
     ASSERT(multi_callback_count == NUM_CALLBACKS / 2);
     
     mock_current_time = 10;
