@@ -66,6 +66,9 @@ struct timespec CallaterGetTimespec()
 
 float CallaterCurrentTime()
 {
+#ifdef CALLATER_TEST
+    return mock_current_time;
+#else
 #ifdef _WIN32
     uint64_t time;
     QueryPerformanceCounter((void*)&time);
@@ -73,6 +76,7 @@ float CallaterCurrentTime()
 #else
     struct timespec ts = CallaterGetTimespec();
     return ts.tv_sec - table.startSec + ts.tv_nsec / 1000000000.0f;
+#endif
 #endif
 }
 
@@ -450,7 +454,7 @@ void CallaterDeinit()
 {
     free(table.funcs);
     free(table.args);
-    free(table.invokeTimes - table.delaysPtrOffset);
+    free((char*)table.invokeTimes - table.delaysPtrOffset);
     free(table.repeatRates);
     free(table.groupIDs);
     table = (CallaterTable){0};
