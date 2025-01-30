@@ -57,7 +57,7 @@ void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
 void CallaterStopRepeat(CallaterRef ref);
 
 // changes the repeat rate of an invocation. Can also be used to make non-repeating invocation be repeating
-// NOTE the new repeat rate will only take effect after the next repeat
+// NOTE the new repeat rate will only take effect after the current invocation is done
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
 
 // changes the groupId of the referenced invocation

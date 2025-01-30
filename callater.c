@@ -424,7 +424,7 @@ uint64_t CallaterGetID(CallaterRef ref)
 uint64_t CallaterGroupCount(uint64_t groupId)
 {
     uint64_t count = 0;
-    for(uint64_t i = 0 ; i < table.lastRealInvocation ; i++)
+    for(uint64_t i = 0 ; i <= table.lastRealInvocation ; i++)
     {
         count += (table.groupIDs[i] == groupId);
     }
@@ -434,7 +434,7 @@ uint64_t CallaterGroupCount(uint64_t groupId)
 uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
 {
     uint64_t count = 0;
-    for(uint64_t i = 0 ; i < table.lastRealInvocation ; i++)
+    for(uint64_t i = 0 ; i <= table.lastRealInvocation ; i++)
     {
         if(table.groupIDs[i] == groupId)
         {
