@@ -95,7 +95,7 @@ void TestGroupCancellation() {
     CallaterInvokeID(GroupCallback, NULL, 0.2f, GROUP_ID);
     CallaterInvokeID(GroupCallback, NULL, 0.3f, GROUP_ID);
     
-    CallaterCancelGroup(GROUP_ID);
+    CallaterCancelID(GROUP_ID);
     
     mock_current_time = 1.0f;
     CallaterUpdate();
@@ -133,7 +133,7 @@ void TestReferenceManagement() {
     setup();
     
     CallaterRef ref = CallaterInvoke(BasicCallback, NULL, 0.5f);
-    ASSERT(CallaterFuncRef(BasicCallback) == ref);
+    ASSERT(CallaterFuncRef(BasicCallback).ref == ref.ref);
     
     CallaterCancel(ref);
     mock_current_time = 1.0f;
@@ -153,7 +153,6 @@ void TestStressTest() {
     
     mock_current_time = 5;
     CallaterUpdate();
-    printf("count: %d\n", multi_callback_count);
     ASSERT(multi_callback_count == NUM_CALLBACKS / 2);
     
     mock_current_time = 10;
@@ -256,7 +255,7 @@ bool RefsContain(CallaterRef *refs, uint64_t len, CallaterRef toFind)
 {
     for(uint64_t i = 0 ; i < len ; i++)
     {
-        if(refs[i] == toFind) return true;
+        if(refs[i].ref == toFind.ref) return true;
     }
     return false;
 }
