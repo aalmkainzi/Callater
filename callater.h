@@ -34,7 +34,7 @@ CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, flo
 
 CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId);
 
-// this must be called for the functions added with `CallaterInvoke` to actually get invoked
+// this must be called for the invocations added to actually get called
 // basically you should call this once every frame
 void CallaterUpdate();
 
