@@ -452,7 +452,14 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
 
 void CallaterShrinkToFit()
 {
-    CallaterReallocTable(table.count);
+    uint64_t newCap = table.lastRealInvocation + 1;
+    CallaterReallocTable(newCap);
+    
+    if(table.count > newCap)
+    {
+        table.noopCount -= (table.count - newCap);
+        table.count = newCap;
+    }
 }
 
 void CallaterDeinit()
