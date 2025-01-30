@@ -210,7 +210,7 @@ static void CallaterTick(float curTime)
         while (mask != 0)
         {
             unsigned long bit;
-#ifdef _MSC_VER
+#ifdef _WIN32
             _BitScanForward(&bit, mask);
 #else
             bit = __builtin_ctz(mask);
@@ -346,6 +346,11 @@ CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, f
     CallaterRef ret = CallaterInvokeID(func, arg, firstDelay, groupId);
     CallaterSetRepeatRate(ret, repeatRate);
     return ret;
+}
+
+float CallaterWillInvokeAfter(CallaterRef ref)
+{
+    return CallaterCurrentTime() - table.invokeTimes[ref];
 }
 
 void CallaterCancelGroup(uint64_t groupId)
