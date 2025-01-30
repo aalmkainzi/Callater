@@ -334,7 +334,8 @@ void ChangeGroupIdCallback(void* arg, CallaterRef ref) {
     CallaterSetGID(ref, *(uint64_t*)arg);
 }
 
-void TestChangeGroupIdDuringCallback() {
+void TestChangeGroupIdDuringCallback()
+{
     TEST("Change group ID during callback");
     setup();
     
