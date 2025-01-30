@@ -39,7 +39,7 @@ CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, f
 void CallaterUpdate();
 
 // returns the seconds from now to when the invocation will happen
-float CallaterWillInvokeAfter(CallaterRef ref);
+float CallaterInvokesAfter(CallaterRef ref);
 
 // gets the invocation reference of a function that was added
 // if multiple occurances of `func` exist, it doesn't necessarily get the next one to be invoked, nor the most newly inserted

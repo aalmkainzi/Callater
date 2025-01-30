@@ -348,7 +348,7 @@ CallaterRef CallaterInvokeRepeatID(void(*func)(void*, CallaterRef), void *arg, f
     return ret;
 }
 
-float CallaterWillInvokeAfter(CallaterRef ref)
+float CallaterInvokesAfter(CallaterRef ref)
 {
     return CallaterCurrentTime() - table.invokeTimes[ref];
 }
