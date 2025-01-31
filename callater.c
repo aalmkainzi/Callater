@@ -471,7 +471,7 @@ void CallaterShrinkToFit()
         table.count = newCap;
     }
     
-#if defined(CALLATER_DEBUG)
+#if defined(DEBUG)
     assert(CallaterCountNoop() == table.noopCount);
 #endif
 }
