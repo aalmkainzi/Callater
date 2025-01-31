@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <immintrin.h>
 
 #ifdef _WIN32
@@ -133,12 +134,12 @@ static void CallaterNoop(void *arg, CallaterRef ref)
 
 static void CallaterPopInvoke(uint64_t idx)
 {
+    table.noopCount += (table.funcs[idx] != CallaterNoop);
     table.funcs[idx] = CallaterNoop;
     table.args[idx] = NULL;
     table.invokeTimes[idx] = INFINITY;
     table.groupIDs[idx] = (uint64_t)-1;
     table.repeatRates[idx] = INFINITY;
-    table.noopCount++;
 }
 
 static void CallaterReallocTable(uint64_t newCap)
@@ -449,6 +450,16 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
     return count;
 }
 
+static uint64_t CallaterCountNoop()
+{
+    uint64_t count = 0;
+    for(uint64_t i = 0 ; i < table.count ; i++)
+    {
+        count += (table.funcs[i] == CallaterNoop);
+    }
+    return count;
+}
+
 void CallaterShrinkToFit()
 {
     uint64_t newCap = table.lastRealInvocation + 1;
@@ -459,6 +470,10 @@ void CallaterShrinkToFit()
         table.noopCount -= (table.count - newCap);
         table.count = newCap;
     }
+    
+#if defined(CALLATER_DEBUG)
+    assert(CallaterCountNoop() == table.noopCount);
+#endif
 }
 
 void CallaterDeinit()
