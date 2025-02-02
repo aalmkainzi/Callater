@@ -15,7 +15,7 @@ int main()
     InitWindow(windowWidth, windowHeight, "Bam");
     
     uint32_t playerTag = NameToTag("Player");
-    CreateGameObject(playerTag);
+    CreateGameObject(playerTag, NULL);
     
     while(!WindowShouldClose())
     {

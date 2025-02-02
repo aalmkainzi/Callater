@@ -31,7 +31,7 @@ static void Init(GameObject *go, void *arg)
     EnemySpawner *spawner = (EnemySpawner*)go;
     spawner->data.bulletTag = NameToTag("Bullet");
     spawner->data.spawnSpeed = 5.0f;
-    InvokeRepeat(SpeedUpSpawning, go, spawner->data.spawnSpeed, spawner->data.spawnSpeed);
+    InvokeRepeatGID(SpeedUpSpawning, go, spawner->data.spawnSpeed, spawner->data.spawnSpeed, spawner->gameObjectHeader.id);
 }
 
 static void Update(GameObject *go)
