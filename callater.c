@@ -431,7 +431,6 @@ void *CallaterGetArg(CallaterRef ref)
     return table.funcs[ref.ref];
 }
 
-
 void CallaterSetGID(CallaterRef ref, uint64_t groupId)
 {
     table.groupIDs[ref.ref] = groupId;
