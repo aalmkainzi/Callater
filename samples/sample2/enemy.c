@@ -1,24 +1,20 @@
 #include "game.h"
 #include "../../callater.h"
 
-static uint64_t nextId = 1;
+#define GAMEOBJECT_TYPE Enemy
+#include "gameobject.h"
 
-void ShootAtPlayer(void *arg, CallaterRef invokeRef);
-
-void SpawnEnemy(void *arg, CallaterRef invokeRef)
+static void Init(GameObject *go)
 {
-    Enemy *enemy = arg;
-    enemy->id = nextId++;
-    InvokeRepeatID(ShootAtPlayer, enemy, 1.0f, enemy->fireRate, enemy->id);
+    
 }
 
-void ShootAtPlayer(void *arg, CallaterRef invokeRef)
+static void Update(GameObject *go)
 {
-    Enemy *enemy = arg;
-    gameState.player
+    
 }
 
-void SpawnBullet(Vector2 pos, Vector2 dir)
+static void Draw(GameObject *go)
 {
     
 }

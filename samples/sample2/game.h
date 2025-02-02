@@ -1,46 +1,96 @@
+#ifndef GAME_H
+#define GAME_H
+
+#include <stddef.h>
 #include <stdint.h>
+#include <stdalign.h>
 #include "raylib.h"
 
-extern float playerRadius;
+#define DECL_GAMEOBJECT(name, dataField) \
+typedef struct name \
+{ \
+    GameObjectHeader gameObjectHeader; \
+    \
+    alignas(max_align_t) dataField data; \
+} name;
 
-typedef struct Drawable
+typedef enum
 {
-    void *arg;
-    void(*draw)(void*arg);
-} Drawable;
+    GOBJ_PLAYER,
+    GOBJ_ENEMY,
+    GOBJ_BULLET
+} GameObjectTag;
 
-typedef struct Player
+struct GameObject;
+
+typedef struct GameObjectCallbacks
 {
-    Drawable drawPlayer;
-    Vector2 pos;
-    Vector2 velocity;
-    float speed;
-    bool readyToFire;
-} Player;
+    void(*init)  (struct GameObject*);
+    void(*update)(struct GameObject*);
+    void(*draw)  (struct GameObject*);
+} GameObjectCallbacks;
 
-typedef struct Enemy
+typedef struct GameObjectHeader
 {
     uint64_t id;
     Vector2 pos;
-    float fireRate;
-    float burstDelay;
-} Enemy;
+    
+    GameObjectCallbacks clalbacks;
+    
+    uint32_t tag;
+} GameObjectHeader;
+
+typedef struct GameObject
+{
+    GameObjectHeader gameObjectHeader;
+    alignas(max_align_t) unsigned char gameObjectData[];
+} GameObject;
+
+DECL_GAMEOBJECT(
+    Player,
+    struct
+    {
+        Vector2 velocity;
+        float radius;
+        float speed;
+        bool readyToFire;
+    }
+)
+
+DECL_GAMEOBJECT(
+    Enemy,
+    struct
+    {
+        Vector2 pos;
+        float fireRate;
+        float burstDelay;
+    }
+)
+
+DECL_GAMEOBJECT(
+    Bullet,
+    struct
+    {
+        float speed;
+    }
+)
+
+typedef struct GameObjectGroup
+{
+    uint64_t count, cap, elmSize;
+    GameObject *objs;
+} GameObjectGroup;
 
 typedef struct GameState
 {
-    Player *player;
-    
-    Enemy *enemies;
-    uint64_t nbEnemies;
-    uint64_t capEnemies;
-    
-    Drawable *drawables;
-    uint64_t nbDrawables;
-    uint64_t capDrawables;
+    GameObjectGroup *gameObjectGroups;
+    uint64_t cap, len;
     
     Vector2 bounds;
 } GameState;
 
+extern uint32_t nextGameObjectTag;
+extern uint64_t nextId;
 extern GameState gameState;
 
-uint64_t AddDrawable(Drawable drawable);
+#endif
