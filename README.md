@@ -108,9 +108,6 @@ void CallaterCancelGID(uint64_t groupId);
 // removes the referenced invocation
 void CallaterCancel(CallaterRef ref);
 
-// changes the function to be invoked
-void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
-
 // stops the referenced invocation from repeating
 void CallaterStopRepeat(CallaterRef ref);
 
@@ -118,10 +115,20 @@ void CallaterStopRepeat(CallaterRef ref);
 // NOTE the new repeat rate will only take effect after the current invocation is done
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate);
 
+float CallaterGetRepeatRate(CallaterRef ref);
+
+// changes the function to be invoked
+void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef));
+
+typeof(void(*)(void*, CallaterRef)) CallaterGetFunc(CallaterRef ref);
+
+// changes the arg to be passed when the function is invoked
+void CallaterSetArg(CallaterRef ref, void *arg);
+
+void *CallaterGetArg(CallaterRef ref);
+
 // changes the groupId of the referenced invocation
 void CallaterSetGID(CallaterRef ref, uint64_t groupId);
-
-float CallaterGetRepeatRate(CallaterRef ref);
 
 uint64_t CallaterGetGID(CallaterRef ref);
 

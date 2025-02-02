@@ -401,24 +401,40 @@ void CallaterStopRepeat(CallaterRef ref)
     table.repeatRates[ref.ref] = -1;
 }
 
-void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef))
-{
-    table.funcs[ref.ref] = func;
-}
-
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate)
 {
     table.repeatRates[ref.ref] = newRepeatRate;
 }
 
-void CallaterSetGID(CallaterRef ref, uint64_t groupId)
-{
-    table.groupIDs[ref.ref] = groupId;
-}
-
 float CallaterGetRepeatRate(CallaterRef ref)
 {
     return table.repeatRates[ref.ref];
+}
+
+void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef))
+{
+    table.funcs[ref.ref] = func;
+}
+
+typeof(void(*)(void*, CallaterRef)) CallaterGetFunc(CallaterRef ref)
+{
+    return table.funcs[ref.ref];
+}
+
+void CallaterSetArg(CallaterRef ref, void *arg)
+{
+    table.funcs[ref.ref] = arg;
+}
+
+void *CallaterGetArg(CallaterRef ref)
+{
+    return table.funcs[ref.ref];
+}
+
+
+void CallaterSetGID(CallaterRef ref, uint64_t groupId)
+{
+    table.groupIDs[ref.ref] = groupId;
 }
 
 uint64_t CallaterGetGID(CallaterRef ref)
