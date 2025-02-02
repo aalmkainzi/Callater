@@ -74,7 +74,7 @@ DECL_GAMEOBJECT(
     struct
     {
         float spawnSpeed;
-        uint32_t bulletTag;
+        uint32_t enemyTag;
     }
 );
 
