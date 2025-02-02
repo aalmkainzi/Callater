@@ -10,30 +10,22 @@
 
 #include "game.h"
 
+#define GAMEOBJ_TYPE_STR_(ty) #ty
+#define GAMEOBJ_TYPE2STR(ty) GAMEOBJ_TYPE_STR_(ty)
+
 static uint32_t gameObjTyTag;
 
-__attribute__((constructor)) static void RegisterGameObjectTag()
-{
-    gameObjTyTag = nextGameObjectTag++;
-}
+static void Init(GameObject *go);
+static void Update(GameObject *go);
+static void Draw(GameObject *go);
 
 static uint32_t GetTyTag()
 {
     return gameObjTyTag;
 }
 
-static void Init(GameObject *go);
-static void Update(GameObject *go);
-static void Draw(GameObject *go);
-
-static GameObject *CreateGameObject()
+__attribute__((constructor)) static void RegisterGameObjectGroup()
 {
-    GAMEOBJECT_TYPE ret = {
-        .gameObjectHeader.id = nextId++,
-        .gameObjectHeader.tag = GetTyTag(),
-        .gameObjectHeader.callbacks = {.init = Init, .update = Update, .draw = Draw}
-    };
-    
-    ret.gameObjectHeader.Init(&ret);
-    return ret;
+    gameObjTyTag = nextGameObjectTag++;
+    PushGameObjectGroup(GetTyTag(), (GameObjectCallbacks){.init = Init, .update = Update, .draw = Draw}, sizeof(GAMEOBJECT_TYPE), GAMEOBJ_TYPE2STR(GAMEOBJECT_TYPE));
 }
