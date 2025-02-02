@@ -14,13 +14,6 @@ typedef struct name \
     alignas(max_align_t) dataField data; \
 } name;
 
-typedef enum
-{
-    GOBJ_PLAYER,
-    GOBJ_ENEMY,
-    GOBJ_BULLET
-} GameObjectTag;
-
 struct GameObject;
 
 typedef struct GameObjectCallbacks
