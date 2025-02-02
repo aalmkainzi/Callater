@@ -2,11 +2,11 @@
 #error "Only one gameObject type can be defined per file"
 #endif
 
+#define GAMEOBJECT_DEFINED_IN_FILE
+
 #if !defined(GAMEOBJECT_TYPE)
 #error "GAMEOBJECT_TYPE must be defined (e.g. `#define GAMEOBJECT_TYPE Enemy`)"
 #endif
-
-#define GAMEOBJECT_DEFINED_IN_FILE
 
 #include "game.h"
 
@@ -15,11 +15,11 @@
 
 static uint32_t gameObjTyTag;
 
-static void Init(GameObject *go);
-static void Update(GameObject *go);
-static void Draw(GameObject *go);
+static void Init(GameObject*, void*);
+static void Update(GameObject*);
+static void Draw(GameObject*);
 
-static uint32_t GetTyTag()
+static inline uint32_t ThisTag()
 {
     return gameObjTyTag;
 }
@@ -27,5 +27,5 @@ static uint32_t GetTyTag()
 __attribute__((constructor)) static void RegisterGameObjectGroup()
 {
     gameObjTyTag = nextGameObjectTag++;
-    PushGameObjectGroup(GetTyTag(), (GameObjectCallbacks){.init = Init, .update = Update, .draw = Draw}, sizeof(GAMEOBJECT_TYPE), GAMEOBJ_TYPE2STR(GAMEOBJECT_TYPE));
+    PushGameObjectGroup(ThisTag(), (GameObjectCallbacks){.init = Init, .update = Update, .draw = Draw}, sizeof(GAMEOBJECT_TYPE), GAMEOBJ_TYPE2STR(GAMEOBJECT_TYPE));
 }

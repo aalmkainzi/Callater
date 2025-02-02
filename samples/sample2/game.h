@@ -17,15 +17,16 @@ struct GameObject;
 
 typedef struct GameObjectCallbacks
 {
-    void(*init)  (struct GameObject*);
+    void(*init)  (struct GameObject*, void*);
     void(*update)(struct GameObject*);
     void(*draw)  (struct GameObject*);
 } GameObjectCallbacks;
 
 typedef struct GameObjectHeader
 {
-    uint64_t id;
+    const uint64_t id;
     Vector2 pos;
+    const uint32_t tag;
 } GameObjectHeader;
 
 typedef struct GameObject
@@ -49,9 +50,11 @@ DECL_GAMEOBJECT(
     Enemy,
     struct
     {
+        GameObject *player;
         Vector2 pos;
         float fireRate;
         float burstDelay;
+        Color color;
     }
 );
 
@@ -59,7 +62,10 @@ DECL_GAMEOBJECT(
     Bullet,
     struct
     {
+        Vector2 target;
         float speed;
+        float radius;
+        Color color;
     }
 );
 
@@ -68,6 +74,7 @@ DECL_GAMEOBJECT(
     struct
     {
         float spawnSpeed;
+        uint32_t bulletTag;
     }
 );
 
@@ -90,22 +97,21 @@ void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t g
 GameObject *AllocGameObject(uint32_t tag);
 void DrawAllGameObjects();
 void UpdateAllGameObjects();
+uint32_t GameObjectTag(GameObject *go);
 
-GameObject *CreateGameObject_ByTag(uint32_t tag);
-GameObject *CreateGameObject_ByName(const char *name);
+GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg);
+GameObject *CreateGameObject_ByName(const char *name, void *arg);
 
-#define CreateGameObject(arg) \
-_Generic(arg, \
-char*: CreateGameObject_ByName, \
+#define CreateGameObject(tagOrName, arg) \
+_Generic(arg,                            \
+char*         : CreateGameObject_ByName, \
 unsigned char*: CreateGameObject_ByName, \
-signed char*: CreateGameObject_ByName, \
-default: CreateGameObject_ByTag \
-)(arg)
+signed char*  : CreateGameObject_ByName, \
+default       : CreateGameObject_ByTag   \
+)(tagOrName, arg)
 
 uint32_t NameToTag(const char *typeName);
 const char *TagToName(uint32_t tag);
-
-
 
 static inline Vector2 *Position(GameObject *go)
 {

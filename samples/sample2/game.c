@@ -57,7 +57,6 @@ GameObject *AllocGameObject(uint32_t tag)
     GameObjectGroup *gameObjectGroup = &gameState.gameObjectGroups[tag];
     ArrayMaybeGrow((void**)&gameObjectGroup->objs, &gameObjectGroup->cap, gameObjectGroup->count, gameObjectGroup->elmSize);
     GameObject *ret = GameObjectAt(gameObjectGroup, gameObjectGroup->count);
-    ret->gameObjectHeader.id = nextId++;
     gameObjectGroup->count += 1;
     
     memset(ret, 0, gameObjectGroup->elmSize);
@@ -88,16 +87,23 @@ void UpdateAllGameObjects()
     }
 }
 
-GameObject *CreateGameObject_ByTag(uint32_t tag)
+GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg)
 {
     GameObject *ret = AllocGameObject(tag);
-    gameState.gameObjectGroups[tag].callbacks.init(ret);
+    *(uint64_t*)&ret->gameObjectHeader.id = nextId++;
+    *(uint32_t*)&ret->gameObjectHeader.tag = tag;
+    gameState.gameObjectGroups[tag].callbacks.init(ret, arg);
     return ret;
 }
 
-GameObject *CreateGameObject_ByName(const char *name)
+GameObject *CreateGameObject_ByName(const char *name, void *arg)
 {
-    return CreateGameObject_ByTag(NameToTag(name));
+    return CreateGameObject_ByTag(NameToTag(name), arg);
+}
+
+uint32_t GameObjectTag(GameObject *go)
+{
+    return go->gameObjectHeader.tag;
 }
 
 uint32_t NameToTag(const char *typeName)

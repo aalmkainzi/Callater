@@ -1,16 +1,18 @@
-#include "raylib.h"
-#include "raymath.h"
+#include "player.h"
 #include "game.h"
 
 #define GAMEOBJECT_TYPE Player
 #include "gameobject.h"
 
-void HandlePlayerInput(Player *p);
-void HandlePlayerMovement(Player *p);
+GameObject *playerInstance = {0};
 
-static void Init(GameObject *go)
+static void HandlePlayerInput(Player *p);
+static void HandlePlayerMovement(Player *p);
+
+static void Init(GameObject *go, void *arg)
 {
     Player *player = (Player*)go;
+    playerInstance = (GameObject*) player;
     player->data.radius = 15.5f;
     player->data.speed = 355.0f;
     player->gameObjectHeader.pos = (Vector2){windowWidth / 2.0f, windowHeight / 2.0f};
