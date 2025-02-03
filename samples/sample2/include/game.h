@@ -21,6 +21,7 @@ typedef struct GameObjectCallbacks
     void(*init)  (struct GameObject*, void*);
     void(*update)(struct GameObject*);
     void(*draw)  (struct GameObject*);
+    void(*deinit)(struct GameObject*);
 } GameObjectCallbacks;
 
 typedef struct GameObjectHeader
@@ -37,55 +38,7 @@ typedef struct GameObject
     alignas(max_align_t) unsigned char anyData[];
 } GameObject;
 
-DECL_GAMEOBJECT(
-    Player,
-    struct PlayerData
-    {
-        Vector2 velocity;
-        float radius;
-        float speed;
-        int8_t health;
-    }
-);
 
-DECL_GAMEOBJECT(
-    Bullet,
-    struct BulletData
-    {
-        Vector2 spawnPos;
-        Vector2 target;
-        Vector2 dir;
-        float radius;
-        float speed;
-        Color color;
-    }
-);
-
-DECL_GAMEOBJECT(
-    Enemy,
-    struct EnemyData
-    {
-        Vector2 spawnPos;
-        float fireRate;
-        float burstDelay;
-        float radius;
-        Color color;
-        struct BulletData bulletData;
-    }
-);
-
-DECL_GAMEOBJECT(
-    EnemySpawner,
-    struct EnemySpawnerData
-    {
-        float spawnSpeed;
-        struct EnemyData nextEnemy;
-    }
-);
-
-DECL_GAMEOBJECT(
-    PlayerHealth
-);
 
 typedef struct GameObjectGroup
 {

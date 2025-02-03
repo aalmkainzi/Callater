@@ -2,6 +2,7 @@
 #define CALLATER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifndef CALLATER_NO_SHORT_NAMES
     
@@ -12,7 +13,7 @@
     
 #endif
 
-#define CALLATER_ERR_REF ((CallaterRef){(uint64_t)-1})
+#define CALLATER_REF_ERR ((CallaterRef){(uint64_t)-1})
 
 typedef struct CallaterRef
 {
@@ -44,6 +45,9 @@ void CallaterUpdate();
 
 // Returns the seconds from now to when the invocation will happen
 float CallaterInvokesAfter(CallaterRef ref);
+
+// Returns whether this reference is an error
+bool CallaterRefError(CallaterRef ref);
 
 // Gets the invocation reference of a function that was added
 // if multiple occurances of `func` exist, it doesn't necessarily get the next one to be invoked, nor the most newly inserted

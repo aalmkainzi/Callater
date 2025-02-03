@@ -1,5 +1,5 @@
 #if defined(GAMEOBJECT_DEFINED_IN_FILE)
-#error "Only one gameObject type can be defined per file"
+#error "Only one gameobject type can be defined per file"
 #endif
 
 #define GAMEOBJECT_DEFINED_IN_FILE
@@ -13,19 +13,21 @@
 #define GAMEOBJ_TYPE_STR_(ty) #ty
 #define GAMEOBJ_TYPE2STR(ty) GAMEOBJ_TYPE_STR_(ty)
 
-static uint32_t gameObjTyTag;
+static uint32_t gameObjTag;
 
 static void Init(GameObject*, void*);
 static void Update(GameObject*);
 static void Draw(GameObject*);
+static void Deinit(GameObject*);
 
 static inline uint32_t ThisTag()
 {
-    return gameObjTyTag;
+    return gameObjTag;
 }
 
 __attribute__((constructor)) static void RegisterGameObjectGroup()
 {
-    gameObjTyTag = nextGameObjectTag++;
-    PushGameObjectGroup(ThisTag(), (GameObjectCallbacks){.init = Init, .update = Update, .draw = Draw}, sizeof(GAMEOBJECT_TYPE), GAMEOBJ_TYPE2STR(GAMEOBJECT_TYPE));
+    gameObjTag = nextGameObjectTag++;
+    GameObjectCallbacks callbacks = {.init = Init, .update = Update, .draw = Draw, .deinit = Deinit};
+    PushGameObjectGroup(ThisTag(), callbacks, sizeof(GAMEOBJECT_TYPE), GAMEOBJ_TYPE2STR(GAMEOBJECT_TYPE));
 }

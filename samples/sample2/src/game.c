@@ -121,6 +121,8 @@ GameObject *CreateGameObject_ByName(const char *name, void *arg)
 
 void DestroyGameObject(GameObject *go)
 {
+    GameObjectGroup *group = &gameState.gameObjectGroups[go->gameObjectHeader.tag];
+    group->callbacks.deinit(go);
     go->gameObjectHeader.destroy = true;
     CallaterCancelGID(go->gameObjectHeader.id);
 }

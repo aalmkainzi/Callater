@@ -1,8 +1,8 @@
 #include "game.h"
-#include "player.h"
 #include "callater.h"
 #include "raylib.h"
-#include "raymath.h"
+#include "gameobjects/enemy.h"
+#include "gameobjects/player.h"
 
 #define GAMEOBJECT_TYPE Enemy
 #include "gameobject.h"
@@ -46,6 +46,7 @@ static void Update(GameObject *go)
     
     if( CirclesOverlapping(enemyCircle, playerCircle) )
     {
+        PlayerHeal(1);
         DestroyGameObject((GameObject*) enemy);
     }
 }
@@ -54,4 +55,9 @@ static void Draw(GameObject *go)
 {
     Enemy *enemy = (Enemy*) go;
     DrawCircleV(enemy->gameObjectHeader.pos, enemy->data.radius, enemy->data.color);
+}
+
+static void Deinit(GameObject *go)
+{
+    (void) go;
 }

@@ -1,7 +1,6 @@
-#include <stdlib.h>
-#include "game.h"
-#include "callater.h"
 #include "raylib.h"
+#include "callater.h"
+#include "gameobjects/enemy_spawner.h"
 
 #define GAMEOBJECT_TYPE EnemySpawner
 #include "gameobject.h"
@@ -68,6 +67,11 @@ static void Update(GameObject *go)
 }
 
 static void Draw(GameObject *go)
+{
+    (void) go;
+}
+
+static void Deinit(GameObject *go)
 {
     (void) go;
 }

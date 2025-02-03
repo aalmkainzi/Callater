@@ -384,7 +384,7 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef))
             return (CallaterRef){i};
         }
     }
-    return CALLATER_ERR_REF;
+    return CALLATER_REF_ERR;
 }
 
 void CallaterCancel(CallaterRef ref)
@@ -463,6 +463,11 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
         }
     }
     return count;
+}
+
+bool CallaterRefError(CallaterRef ref)
+{
+    return ref.ref != (uint64_t)-1;
 }
 
 [[maybe_unused]]

@@ -1,7 +1,8 @@
-#include "game.h"
-#include "player.h"
 #include "raylib.h"
 #include "raymath.h"
+#include "game.h"
+#include "gameobjects/player.h"
+#include "gameobjects/bullet.h"
 
 #define GAMEOBJECT_TYPE Bullet
 #include "gameobject.h"
@@ -24,7 +25,7 @@ static Vector2 Vector2MultFloat(Vector2 v, float f)
         .y = v.y * f
     };
 }
-
+#include <stdio.h>
 static void Update(GameObject *go)
 {
     Bullet *bullet = (Bullet*) go;
@@ -53,10 +54,24 @@ static void Update(GameObject *go)
         PlayerTakeDamage(1);
         DestroyGameObject((GameObject*) bullet);
     }
+    if( 
+        (bulletCircle.center.x - bulletCircle.radius > windowWidth)   ||
+        (bulletCircle.center.x + bulletCircle.radius <  0)            ||
+        (bulletCircle.center.y - bulletCircle.radius >  windowHeight) ||
+        (bulletCircle.center.y + bulletCircle.radius < 0)
+    )
+    {
+        DestroyGameObject((GameObject*) bullet);
+    }
 }
 
 static void Draw(GameObject *go)
 {
     Bullet *bullet = (Bullet*) go;
     DrawCircleV(bullet->gameObjectHeader.pos, bullet->data.radius, RED);
+}
+
+static void Deinit(GameObject *go)
+{
+    (void) go;
 }
