@@ -1,4 +1,4 @@
 CompileFlags:
   Add: 
-    - -Iraylib-5.5_win64_mingw-w64/include
+    - -I "raylib-5.5_win64_mingw-w64/include"
     - -std=gnu11

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "../../callater.h"
+#include "callater.h"
 #include "game.h"
 
 int windowWidth = 1280;

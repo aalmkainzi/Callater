@@ -26,6 +26,8 @@ void SpawnRandomFood(void *arg, CallaterRef invokeRef);
 int windowWidth = 1280;
 int windowHeight = 720;
 
+Sound pop;
+
 int main()
 {
     InitWindow(1280, 720, "Meow");
@@ -37,7 +39,7 @@ int main()
     cam.zoom = 1.0f;
     
     InitAudioDevice();
-    Sound pop = LoadSound("resources/pop.wav");
+    pop = LoadSound("resources/pop.wav");
     
     FoodData foodData = {0};
     
@@ -114,4 +116,6 @@ void SpawnRandomFood(void *arg, CallaterRef invokeRef)
         .y = yPercent * windowHeight
     };
     foodData->foods[foodData->nbFoods++] = newFoodPos;
+    
+    PlaySound(pop);
 }

@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
-#include "../../callater.h"
-#include "raymath.h"
+#include "callater.h"
 #include "game.h"
+#include "raymath.h"
 
 GameState gameState = { 0 };
 uint32_t nextGameObjectTag = 0;
