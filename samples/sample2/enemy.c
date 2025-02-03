@@ -7,10 +7,16 @@
 #define GAMEOBJECT_TYPE Enemy
 #include "gameobject.h"
 
+static uint32_t bulletTag = (uint32_t)-1;
+
 void ShootAtPlayer(void *arg, CallaterRef invokeRef)
 {
-    Enemy *enemy = arg;
+    (void) invokeRef;
     
+    Enemy *enemy = arg;
+    struct BulletData bulletData = enemy->data.bulletData;
+    bulletData.spawnPos = enemy->gameObjectHeader.pos;
+    CreateGameObject(bulletTag, &bulletData);
 }
 
 static void Init(GameObject *go, void *arg)
@@ -18,23 +24,10 @@ static void Init(GameObject *go, void *arg)
     Enemy *enemy = (Enemy*) go;
     struct EnemyData *ed = arg;
     enemy->data = *ed;
-}
-
-static bool maxf(float a, float b)
-{
-    return a > b ? a : b;
-}
-
-typedef struct Circle
-{
-    Vector2 center;
-    float radius;
-} Circle;
-
-static bool CirclesOverlapping(Circle a, Circle b)
-{
-    float dist = Vector2Distance(a.center, b.center);
-    return dist <= maxf(a.radius, b.radius);
+    bulletTag = bulletTag == (uint32_t)-1 ? NameToTag("Bullet") : bulletTag;
+    enemy->gameObjectHeader.pos = enemy->data.spawnPos;
+    
+    InvokeRepeatGID(ShootAtPlayer, enemy, enemy->data.fireRate, enemy->data.fireRate, enemy->gameObjectHeader.id);
 }
 
 static void Update(GameObject *go)

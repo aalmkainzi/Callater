@@ -34,7 +34,7 @@ typedef struct GameObjectHeader
 typedef struct GameObject
 {
     GameObjectHeader gameObjectHeader;
-    alignas(max_align_t) unsigned char gameObjectData[];
+    alignas(max_align_t) unsigned char anyData[];
 } GameObject;
 
 DECL_GAMEOBJECT(
@@ -44,18 +44,7 @@ DECL_GAMEOBJECT(
         Vector2 velocity;
         float radius;
         float speed;
-        bool readyToFire;
-    }
-);
-
-DECL_GAMEOBJECT(
-    Enemy,
-    struct EnemyData
-    {
-        float fireRate;
-        float burstDelay;
-        float radius;
-        Color color;
+        int8_t health;
     }
 );
 
@@ -63,10 +52,25 @@ DECL_GAMEOBJECT(
     Bullet,
     struct BulletData
     {
+        Vector2 spawnPos;
         Vector2 target;
+        Vector2 dir;
+        float radius;
         float speed;
+        Color color;
+    }
+);
+
+DECL_GAMEOBJECT(
+    Enemy,
+    struct EnemyData
+    {
+        Vector2 spawnPos;
+        float fireRate;
+        float burstDelay;
         float radius;
         Color color;
+        struct BulletData bulletData;
     }
 );
 
@@ -75,7 +79,7 @@ DECL_GAMEOBJECT(
     struct EnemySpawnerData
     {
         float spawnSpeed;
-        uint32_t enemyTag;
+        struct EnemyData nextEnemy;
     }
 );
 
@@ -104,21 +108,33 @@ void DestroyGameObject(GameObject *go);
 GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg);
 GameObject *CreateGameObject_ByName(const char *name, void *arg);
 
-#define CreateGameObject(tagOrName, arg) \
-_Generic(arg,                            \
-char*         : CreateGameObject_ByName, \
-unsigned char*: CreateGameObject_ByName, \
-signed char*  : CreateGameObject_ByName, \
-default       : CreateGameObject_ByTag   \
-)(tagOrName, arg)
-
 uint32_t NameToTag(const char *typeName);
 const char *TagToName(uint32_t tag);
+
+uint32_t RandomUInt();
+float RandomFloat01();
+float RandomFloat(float min, float max);
+
+typedef struct Circle
+{
+    Vector2 center;
+    float radius;
+} Circle;
+
+bool CirclesOverlapping(Circle a, Circle b);
 
 static inline Vector2 *Position(GameObject *go)
 {
     return &go->gameObjectHeader.pos;
 }
+
+#define CreateGameObject(tagOrName, arg)       \
+_Generic(tagOrName,                                  \
+char*               : CreateGameObject_ByName, \
+unsigned char*      : CreateGameObject_ByName, \
+signed char*        : CreateGameObject_ByName, \
+default             : CreateGameObject_ByTag   \
+)(tagOrName, arg)
 
 extern uint32_t nextGameObjectTag;
 extern uint64_t nextId;

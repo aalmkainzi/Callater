@@ -17,6 +17,8 @@ int main()
     uint32_t playerTag = NameToTag("Player");
     CreateGameObject(playerTag, NULL);
     
+    uint32_t spawnerTag = NameToTag("EnemySpawner");
+    CreateGameObject(spawnerTag, NULL);
     while(!WindowShouldClose())
     {
         BeginDrawing();

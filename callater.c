@@ -465,6 +465,7 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
     return count;
 }
 
+[[maybe_unused]]
 static uint64_t CallaterCountNoop()
 {
     uint64_t count = 0;

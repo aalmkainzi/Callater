@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
+#include "../../callater.h"
+#include "raymath.h"
 #include "game.h"
 
 GameState gameState = { 0 };
@@ -80,7 +82,7 @@ void DrawAllGameObjects()
     for(uint64_t i = 0 ; i < gameState.count ; i++)
     {
         GameObjectGroup *group = &gameState.gameObjectGroups[i];
-        for(uint64_t j = 0 ; j < group->count ; j++ )
+        for(uint64_t j = 0 ; j < group->count ; j++)
         {
             GameObject *go = GameObjectAt(group, j);
             if(!go->gameObjectHeader.destroy)
@@ -94,7 +96,7 @@ void UpdateAllGameObjects()
     for(uint64_t i = 0 ; i < gameState.count ; i++)
     {
         GameObjectGroup *group = &gameState.gameObjectGroups[i];
-        for(uint64_t j = 0 ; j < group->count ; j++ )
+        for(uint64_t j = 0 ; j < group->count ; j++)
         {
             GameObject *go = GameObjectAt(group, j);
             if(!go->gameObjectHeader.destroy)
@@ -124,6 +126,7 @@ void DestroyGameObject(GameObject *go)
 
 uint32_t GameObjectTag(GameObject *go)
 {
+    CallaterCancelGID(go->gameObjectHeader.id);
     return go->gameObjectHeader.tag;
 }
 
@@ -140,4 +143,41 @@ uint32_t NameToTag(const char *typeName)
 const char *TagToName(uint32_t tag)
 {
     return gameState.gameObjectGroups[tag].name;
+}
+
+bool CirclesOverlapping(Circle a, Circle b)
+{
+    float dist = Vector2Distance(a.center, b.center);
+    return dist <= (a.radius + b.radius);
+}
+
+static uint32_t rng_state = 1;
+
+void SeedRNG(uint32_t seed) {
+    rng_state = (seed != 0) ? seed : 1;
+}
+
+uint32_t RandomUInt()
+{
+    rng_state ^= rng_state << 13;
+    rng_state ^= rng_state >> 17;
+    rng_state ^= rng_state << 5;
+    return rng_state;
+}
+
+float RandomFloat01()
+{
+    uint32_t bits = (127u << 23) | (RandomUInt() & 0x7FFFFF);
+    
+    union {
+        uint32_t asInt;
+        float asFloat;
+    } pun;
+    pun.asInt = bits;
+    return pun.asFloat - 1.0f;
+}
+
+float RandomFloat(float min, float max)
+{
+    return RandomFloat01() * (max - min) + min;
 }
