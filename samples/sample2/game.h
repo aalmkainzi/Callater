@@ -1,6 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <malloc.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdalign.h>
@@ -27,6 +28,7 @@ typedef struct GameObjectHeader
     const uint64_t id;
     Vector2 pos;
     const uint32_t tag;
+    bool destroy;
 } GameObjectHeader;
 
 typedef struct GameObject
@@ -37,7 +39,7 @@ typedef struct GameObject
 
 DECL_GAMEOBJECT(
     Player,
-    struct
+    struct PlayerData
     {
         Vector2 velocity;
         float radius;
@@ -48,19 +50,18 @@ DECL_GAMEOBJECT(
 
 DECL_GAMEOBJECT(
     Enemy,
-    struct
+    struct EnemyData
     {
-        GameObject *player;
-        Vector2 pos;
         float fireRate;
         float burstDelay;
+        float radius;
         Color color;
     }
 );
 
 DECL_GAMEOBJECT(
     Bullet,
-    struct
+    struct BulletData
     {
         Vector2 target;
         float speed;
@@ -71,7 +72,7 @@ DECL_GAMEOBJECT(
 
 DECL_GAMEOBJECT(
     EnemySpawner,
-    struct
+    struct EnemySpawnerData
     {
         float spawnSpeed;
         uint32_t enemyTag;
@@ -98,6 +99,7 @@ GameObject *AllocGameObject(uint32_t tag);
 void DrawAllGameObjects();
 void UpdateAllGameObjects();
 uint32_t GameObjectTag(GameObject *go);
+void DestroyGameObject(GameObject *go);
 
 GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg);
 GameObject *CreateGameObject_ByName(const char *name, void *arg);

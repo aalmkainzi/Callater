@@ -55,12 +55,24 @@ void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t g
 GameObject *AllocGameObject(uint32_t tag)
 {
     GameObjectGroup *gameObjectGroup = &gameState.gameObjectGroups[tag];
+    GameObject *foundSlot = NULL;
+    for(uint64_t i = 0 ; i <gameObjectGroup->count ; i++)
+    {
+        GameObject *go = GameObjectAt(gameObjectGroup, i);
+        if(go->gameObjectHeader.destroy)
+        {
+            foundSlot = go;
+            memset(foundSlot, 0, gameObjectGroup->elmSize);
+            return foundSlot;
+        }
+    }
+    
     ArrayMaybeGrow((void**)&gameObjectGroup->objs, &gameObjectGroup->cap, gameObjectGroup->count, gameObjectGroup->elmSize);
-    GameObject *ret = GameObjectAt(gameObjectGroup, gameObjectGroup->count);
+    foundSlot = GameObjectAt(gameObjectGroup, gameObjectGroup->count);
     gameObjectGroup->count += 1;
     
-    memset(ret, 0, gameObjectGroup->elmSize);
-    return ret;
+    memset(foundSlot, 0, gameObjectGroup->elmSize);
+    return foundSlot;
 }
 
 void DrawAllGameObjects()
@@ -70,7 +82,9 @@ void DrawAllGameObjects()
         GameObjectGroup *group = &gameState.gameObjectGroups[i];
         for(uint64_t j = 0 ; j < group->count ; j++ )
         {
-            group->callbacks.draw(GameObjectAt(group, j));
+            GameObject *go = GameObjectAt(group, j);
+            if(!go->gameObjectHeader.destroy)
+                group->callbacks.draw(go);
         }
     }
 }
@@ -82,7 +96,9 @@ void UpdateAllGameObjects()
         GameObjectGroup *group = &gameState.gameObjectGroups[i];
         for(uint64_t j = 0 ; j < group->count ; j++ )
         {
-            group->callbacks.update(GameObjectAt(group, j));
+            GameObject *go = GameObjectAt(group, j);
+            if(!go->gameObjectHeader.destroy)
+                group->callbacks.update(GameObjectAt(group, j));
         }
     }
 }
@@ -99,6 +115,11 @@ GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg)
 GameObject *CreateGameObject_ByName(const char *name, void *arg)
 {
     return CreateGameObject_ByTag(NameToTag(name), arg);
+}
+
+void DestroyGameObject(GameObject *go)
+{
+    go->gameObjectHeader.destroy = true;
 }
 
 uint32_t GameObjectTag(GameObject *go)

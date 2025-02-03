@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "game.h"
 #include "../../callater.h"
-#include "raylib.h"
 
 #define GAMEOBJECT_TYPE EnemySpawner
 #include "gameobject.h"
