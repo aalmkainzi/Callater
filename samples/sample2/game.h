@@ -7,11 +7,11 @@
 #include <stdalign.h>
 #include "raylib.h"
 
-#define DECL_GAMEOBJECT(name, dataField) \
+#define DECL_GAMEOBJECT(name, ...) \
 typedef struct name \
 { \
     GameObjectHeader gameObjectHeader; \
-    alignas(max_align_t) dataField data; \
+    __VA_OPT__(alignas(max_align_t) __VA_ARGS__ data;) \
 } name
 
 struct GameObject;
@@ -81,6 +81,10 @@ DECL_GAMEOBJECT(
         float spawnSpeed;
         struct EnemyData nextEnemy;
     }
+);
+
+DECL_GAMEOBJECT(
+    PlayerHealth
 );
 
 typedef struct GameObjectGroup

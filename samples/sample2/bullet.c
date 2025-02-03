@@ -29,12 +29,13 @@ static void Update(GameObject *go)
 {
     Bullet *bullet = (Bullet*) go;
     
-    bullet->gameObjectHeader.pos = Vector2Add(bullet->gameObjectHeader.pos, 
-                                              Vector2MultFloat(
-                                                  Vector2MultFloat(bullet->data.dir, GetFrameTime()),
-                                                  bullet->data.speed
-                                              )
-                                   );
+    bullet->gameObjectHeader.pos =
+    Vector2Add(bullet->gameObjectHeader.pos, 
+        Vector2MultFloat(
+            Vector2MultFloat(bullet->data.dir, GetFrameTime()),
+            bullet->data.speed
+        )
+    );
     
     Player *player = (Player*) playerInstance;
     

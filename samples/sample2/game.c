@@ -122,11 +122,11 @@ GameObject *CreateGameObject_ByName(const char *name, void *arg)
 void DestroyGameObject(GameObject *go)
 {
     go->gameObjectHeader.destroy = true;
+    CallaterCancelGID(go->gameObjectHeader.id);
 }
 
 uint32_t GameObjectTag(GameObject *go)
 {
-    CallaterCancelGID(go->gameObjectHeader.id);
     return go->gameObjectHeader.tag;
 }
 

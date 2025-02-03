@@ -61,7 +61,7 @@ void HandlePlayerMovement(Player *p)
     
     static const float sign[] = {1.f,-1.f};
     bool outRight = p->gameObjectHeader.pos.x + p->data.radius >= windowWidth;
-    bool outLeft = p->gameObjectHeader.pos.x - p->data.radius <= 0;
+    bool outLeft  = p->gameObjectHeader.pos.x - p->data.radius <= 0;
     if(outRight || outLeft)
     {
         float mult = sign[outRight];
@@ -71,7 +71,7 @@ void HandlePlayerMovement(Player *p)
     }
     
     bool outDown = p->gameObjectHeader.pos.y + p->data.radius >= windowHeight;
-    bool outUp = p->gameObjectHeader.pos.y - p->data.radius <= 0;
+    bool outUp   = p->gameObjectHeader.pos.y - p->data.radius <= 0;
     if(outDown || outUp)
     {
         float mult = sign[outDown];
