@@ -25,7 +25,7 @@ static Vector2 Vector2MultFloat(Vector2 v, float f)
         .y = v.y * f
     };
 }
-#include <stdio.h>
+
 static void Update(GameObject *go)
 {
     Bullet *bullet = (Bullet*) go;

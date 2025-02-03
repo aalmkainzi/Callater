@@ -4,6 +4,12 @@
 #include "game.h"
 #include "raymath.h"
 
+typedef struct GameState
+{
+    GameObjectGroup *gameObjectGroups;
+    uint64_t count, cap;
+} GameState;
+
 GameState gameState = { 0 };
 uint32_t nextGameObjectTag = 0;
 uint64_t nextId = 0;

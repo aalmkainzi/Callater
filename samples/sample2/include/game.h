@@ -38,8 +38,6 @@ typedef struct GameObject
     alignas(max_align_t) unsigned char anyData[];
 } GameObject;
 
-
-
 typedef struct GameObjectGroup
 {
     const char *name;
@@ -48,12 +46,6 @@ typedef struct GameObjectGroup
     GameObjectCallbacks callbacks;
     uint32_t tag;
 } GameObjectGroup;
-
-typedef struct GameState
-{
-    GameObjectGroup *gameObjectGroups;
-    uint64_t count, cap;
-} GameState;
 
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName);
 GameObject *AllocGameObject(uint32_t tag);
@@ -95,7 +87,7 @@ default             : CreateGameObject_ByTag   \
 
 extern uint32_t nextGameObjectTag;
 extern uint64_t nextId;
-extern GameState gameState;
+// extern GameState gameState;
 
 extern int windowWidth;
 extern int windowHeight;
