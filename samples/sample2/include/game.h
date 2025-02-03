@@ -14,16 +14,6 @@ typedef struct name \
     __VA_OPT__(alignas(max_align_t) __VA_ARGS__ data;) \
 } name
 
-struct GameObject;
-
-typedef struct GameObjectCallbacks
-{
-    void(*init)  (struct GameObject*, void*);
-    void(*update)(struct GameObject*);
-    void(*draw)  (struct GameObject*);
-    void(*deinit)(struct GameObject*);
-} GameObjectCallbacks;
-
 typedef struct GameObjectHeader
 {
     const uint64_t id;
@@ -38,14 +28,13 @@ typedef struct GameObject
     alignas(max_align_t) unsigned char anyData[];
 } GameObject;
 
-typedef struct GameObjectGroup
+typedef struct GameObjectCallbacks
 {
-    const char *name;
-    uint64_t count, cap, elmSize;
-    GameObject *objs;
-    GameObjectCallbacks callbacks;
-    uint32_t tag;
-} GameObjectGroup;
+    void(*init)  (struct GameObject*, void*);
+    void(*update)(struct GameObject*);
+    void(*draw)  (struct GameObject*);
+    void(*deinit)(struct GameObject*);
+} GameObjectCallbacks;
 
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName);
 GameObject *AllocGameObject(uint32_t tag);
@@ -87,7 +76,6 @@ default             : CreateGameObject_ByTag   \
 
 extern uint32_t nextGameObjectTag;
 extern uint64_t nextId;
-// extern GameState gameState;
 
 extern int windowWidth;
 extern int windowHeight;

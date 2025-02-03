@@ -4,6 +4,24 @@
 #include "game.h"
 #include "raymath.h"
 
+typedef struct GameObjectNode
+{
+    struct GameObjectNode *next;
+    GameObject gameObject;
+} GameObjectNode;
+
+typedef struct GameObjectGroup
+{
+    const char *name;
+    
+    uint64_t count, elmSize;
+    GameObjectNode *head;
+    GameObjectNode *tail;
+    
+    GameObjectCallbacks callbacks;
+    uint32_t tag;
+} GameObjectGroup;
+
 typedef struct GameState
 {
     GameObjectGroup *gameObjectGroups;
@@ -44,8 +62,12 @@ void GameObjectGroupsMaybeGrow()
 
 static GameObject *GameObjectAt(GameObjectGroup *group, uint64_t idx)
 {
-    unsigned char *elmBytes = (unsigned char*) group->objs;
-    return (GameObject*)(elmBytes + (group->elmSize * idx));
+    GameObjectNode *current = group->head;
+    for(uint64_t i = 0 ; i < idx + 1 ; i++)
+    {
+        current = current->next;
+    }
+    return &current->gameObject;
 }
 
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName)
@@ -55,32 +77,19 @@ void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t g
     gameState.count += 1;
     
     *newGroup = (GameObjectGroup){.tag = tag, .callbacks = callbacks, .elmSize = gameObjSize, .name = typeName};
-    uint64_t newGroupCap = 32;
-    newGroup->objs = malloc(newGroupCap * gameObjSize);
-    newGroup->cap = newGroupCap;
+    newGroup->head = calloc(1, sizeof(GameObjectNode) - sizeof(GameObject) + newGroup->elmSize);
+    newGroup->tail = newGroup->head;
+    *(uint64_t*)newGroup->head->gameObject.gameObjectHeader.id = -1;
 }
 
 GameObject *AllocGameObject(uint32_t tag)
 {
-    GameObjectGroup *gameObjectGroup = &gameState.gameObjectGroups[tag];
-    GameObject *foundSlot = NULL;
-    for(uint64_t i = 0 ; i <gameObjectGroup->count ; i++)
-    {
-        GameObject *go = GameObjectAt(gameObjectGroup, i);
-        if(go->gameObjectHeader.destroy)
-        {
-            foundSlot = go;
-            memset(foundSlot, 0, gameObjectGroup->elmSize);
-            return foundSlot;
-        }
-    }
-    
-    ArrayMaybeGrow((void**)&gameObjectGroup->objs, &gameObjectGroup->cap, gameObjectGroup->count, gameObjectGroup->elmSize);
-    foundSlot = GameObjectAt(gameObjectGroup, gameObjectGroup->count);
-    gameObjectGroup->count += 1;
-    
-    memset(foundSlot, 0, gameObjectGroup->elmSize);
-    return foundSlot;
+    GameObjectGroup *group = &gameState.gameObjectGroups[tag];
+    group->tail->next = calloc(1, sizeof(GameObjectNode) - sizeof(GameObject) + group->elmSize);
+    group->tail = group->tail->next;
+    group->count += 1;
+    GameObject *ret = &group->tail->gameObject;
+    return ret;
 }
 
 void DrawAllGameObjects()
@@ -130,6 +139,30 @@ void DestroyGameObject(GameObject *go)
     GameObjectGroup *group = &gameState.gameObjectGroups[go->gameObjectHeader.tag];
     group->callbacks.deinit(go);
     go->gameObjectHeader.destroy = true;
+    
+    GameObjectNode *prev = NULL;
+    GameObjectNode *current = group->head;
+    for(uint64_t i = 0 ; i < group->count ; i++)
+    {
+        if(current->gameObject.gameObjectHeader.id == go->gameObjectHeader.id)
+        {
+            if(prev != NULL)
+            {
+                prev->next = current->next;
+                free(current);
+                break;
+            }
+            else
+            {
+                group->head = current->next;
+                free(current);
+                break;
+            }
+        }
+        prev = current;
+        current = current->next;
+    }
+    
     CallaterCancelGID(go->gameObjectHeader.id);
 }
 
