@@ -53,6 +53,7 @@ static void Update(GameObject *go)
     {
         PlayerTakeDamage(1);
         DestroyGameObject((GameObject*) bullet);
+        return;
     }
     if( 
         (bulletCircle.center.x - bulletCircle.radius > windowWidth)   ||
@@ -62,6 +63,7 @@ static void Update(GameObject *go)
     )
     {
         DestroyGameObject((GameObject*) bullet);
+        return;
     }
 }
 

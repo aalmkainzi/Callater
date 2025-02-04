@@ -27,9 +27,10 @@ typedef struct GameObjectCallbacks
 typedef struct GameObjectHeader
 {
     const uint64_t id;
+    const uint64_t index;
     Vector2 pos;
     const uint32_t tag;
-    bool destroy;
+    // bool destroy;
 } GameObjectHeader;
 
 typedef struct GameObject
@@ -37,15 +38,6 @@ typedef struct GameObject
     GameObjectHeader gameObjectHeader;
     alignas(max_align_t) unsigned char anyData[];
 } GameObject;
-
-typedef struct GameObjectGroup
-{
-    const char *name;
-    uint64_t count, cap, elmSize;
-    GameObject *objs;
-    GameObjectCallbacks callbacks;
-    uint32_t tag;
-} GameObjectGroup;
 
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName);
 GameObject *AllocGameObject(uint32_t tag);

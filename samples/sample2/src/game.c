@@ -4,6 +4,15 @@
 #include "game.h"
 #include "raymath.h"
 
+typedef struct GameObjectGroup
+{
+    const char *name;
+    uint64_t count, cap, elmSize;
+    GameObject **objs;
+    GameObjectCallbacks callbacks;
+    uint32_t tag;
+} GameObjectGroup;
+
 typedef struct GameState
 {
     GameObjectGroup *gameObjectGroups;
@@ -14,14 +23,16 @@ GameState gameState = { 0 };
 uint32_t nextGameObjectTag = 0;
 uint64_t nextId = 0;
 
-static void ArrayMaybeGrow(void **array, uint64_t *cap, uint64_t count, uint64_t elmSize)
+static void *ArrayMaybeGrow(void *array, uint64_t *cap, uint64_t count, uint64_t elmSize)
 {
+    void *ret = array;
     if(count >= *cap)
     {
         uint64_t newCap = *cap * 2;
-        *array = realloc(*array, newCap * elmSize);
+        ret = realloc(array, newCap * elmSize);
         *cap = newCap;
     }
+    return ret;
 }
 
 __attribute__((constructor(101))) void GameStateInit()
@@ -42,12 +53,6 @@ void GameObjectGroupsMaybeGrow()
     }
 }
 
-static GameObject *GameObjectAt(GameObjectGroup *group, uint64_t idx)
-{
-    unsigned char *elmBytes = (unsigned char*) group->objs;
-    return (GameObject*)(elmBytes + (group->elmSize * idx));
-}
-
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName)
 {
     GameObjectGroupsMaybeGrow();
@@ -56,31 +61,21 @@ void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t g
     
     *newGroup = (GameObjectGroup){.tag = tag, .callbacks = callbacks, .elmSize = gameObjSize, .name = typeName};
     uint64_t newGroupCap = 32;
-    newGroup->objs = malloc(newGroupCap * gameObjSize);
+    newGroup->objs = malloc(newGroupCap * sizeof(*newGroup->objs));
     newGroup->cap = newGroupCap;
 }
 
 GameObject *AllocGameObject(uint32_t tag)
 {
-    GameObjectGroup *gameObjectGroup = &gameState.gameObjectGroups[tag];
-    GameObject *foundSlot = NULL;
-    for(uint64_t i = 0 ; i <gameObjectGroup->count ; i++)
-    {
-        GameObject *go = GameObjectAt(gameObjectGroup, i);
-        if(go->gameObjectHeader.destroy)
-        {
-            foundSlot = go;
-            memset(foundSlot, 0, gameObjectGroup->elmSize);
-            return foundSlot;
-        }
-    }
+    GameObjectGroup *group = &gameState.gameObjectGroups[tag];
+    group->objs = ArrayMaybeGrow(group->objs, &group->cap, group->count, sizeof(group->objs[0]));
+    GameObject **goP = &group->objs[group->count];
+    (*goP) = malloc(group->elmSize);
+    memset(*goP, 0, group->elmSize);
+    memcpy((void*)(&(*goP)->gameObjectHeader.index), &group->count, sizeof(uint64_t));
+    group->count += 1;
     
-    ArrayMaybeGrow((void**)&gameObjectGroup->objs, &gameObjectGroup->cap, gameObjectGroup->count, gameObjectGroup->elmSize);
-    foundSlot = GameObjectAt(gameObjectGroup, gameObjectGroup->count);
-    gameObjectGroup->count += 1;
-    
-    memset(foundSlot, 0, gameObjectGroup->elmSize);
-    return foundSlot;
+    return *goP;
 }
 
 void DrawAllGameObjects()
@@ -90,9 +85,7 @@ void DrawAllGameObjects()
         GameObjectGroup *group = &gameState.gameObjectGroups[i];
         for(uint64_t j = 0 ; j < group->count ; j++)
         {
-            GameObject *go = GameObjectAt(group, j);
-            if(!go->gameObjectHeader.destroy)
-                group->callbacks.draw(go);
+            group->callbacks.draw(group->objs[j]);
         }
     }
 }
@@ -104,9 +97,7 @@ void UpdateAllGameObjects()
         GameObjectGroup *group = &gameState.gameObjectGroups[i];
         for(uint64_t j = 0 ; j < group->count ; j++)
         {
-            GameObject *go = GameObjectAt(group, j);
-            if(!go->gameObjectHeader.destroy)
-                group->callbacks.update(GameObjectAt(group, j));
+            group->callbacks.update(group->objs[j]);
         }
     }
 }
@@ -129,8 +120,12 @@ void DestroyGameObject(GameObject *go)
 {
     GameObjectGroup *group = &gameState.gameObjectGroups[go->gameObjectHeader.tag];
     group->callbacks.deinit(go);
-    go->gameObjectHeader.destroy = true;
+    uint64_t idx = go->gameObjectHeader.index;
+    group->objs[idx] = group->objs[group->count - 1];
+    *(uint64_t*)&group->objs[idx]->gameObjectHeader.index = idx;
     CallaterCancelGID(go->gameObjectHeader.id);
+    group->count -= 1;
+    free(go);
 }
 
 uint32_t GameObjectTag(GameObject *go)
