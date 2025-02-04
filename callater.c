@@ -467,7 +467,7 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
 
 bool CallaterRefError(CallaterRef ref)
 {
-    return ref.ref != (uint64_t)-1;
+    return ref.ref == (uint64_t)-1;
 }
 
 [[maybe_unused]]
