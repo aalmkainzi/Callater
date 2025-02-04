@@ -52,6 +52,7 @@ GameObject *CreateGameObject_ByName(const char *name, void *arg);
 uint32_t NameToTag(const char *typeName);
 const char *TagToName(uint32_t tag);
 
+void SeedRNG(uint32_t seed);
 uint32_t RandomUInt();
 float RandomFloat01();
 float RandomFloat(float min, float max);

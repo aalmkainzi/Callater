@@ -13,6 +13,8 @@ int main()
     CallaterInit();
     InitWindow(windowWidth, windowHeight, "Bam");
     
+    SeedRNG(time(NULL));
+    
     uint32_t playerTag = NameToTag("Player");
     CreateGameObject(playerTag, NULL);
     
