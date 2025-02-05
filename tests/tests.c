@@ -21,14 +21,16 @@ success_counter++; \
 #define CALLATER_TEST
 #include "../callater.c"
 
+// Global setup function to reset the test context
 void setup();
 
-// Test callbacks
+// Test callback counters
 static int basic_callback_count = 0;
 static int repeat_callback_count = 0;
 static int group_callback_count = 0;
 static int multi_callback_count = 0;
 
+// Test callback functions
 void BasicCallback(void* arg, CallaterRef ref) {
     basic_callback_count++;
 }
@@ -45,7 +47,10 @@ void MultiCallback(void* arg, CallaterRef ref) {
     multi_callback_count++;
 }
 
-// Test cases
+// =====================
+// Existing Tests
+// =====================
+
 void TestBasicInvocation() {
     TEST("Basic invocation");
     setup();
@@ -206,7 +211,7 @@ void TestSetRepeatRate() {
     CallaterUpdate();
     ASSERT(repeat_callback_count == 1);
     
-    // Second invocation
+    // Second invocation (should not fire because the new repeat rate takes effect after the first callback)
     mock_current_time = 1.4f;
     CallaterUpdate();
     ASSERT(repeat_callback_count == 1);
@@ -218,7 +223,7 @@ void TestSetRepeatRate() {
 }
 
 void TestSetGID() {
-    TEST("Set ID");
+    TEST("Set group ID");
     setup();
     
     CallaterRef ref = CallaterInvoke(BasicCallback, NULL, 0.5f);
@@ -404,6 +409,160 @@ void TestStopRepeatDuringCallback() {
     ASSERT(repeat_callback_count == 1);
 }
 
+// =====================
+// New Tests (Pausing and Additional APIs)
+// =====================
+
+void TestPauseUnpause() {
+    TEST("Pause and Unpause single invocation");
+    setup();
+    
+    // Create a repeating invocation
+    CallaterRef ref = CallaterInvokeRepeat(BasicCallback, NULL, 0.5f, 1.0f);
+    
+    // Let it execute once
+    mock_current_time = 0.6f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 1);
+    
+    // Pause the invocation
+    CallaterPause(ref);
+    
+    // Advance time; though it would normally fire, it's paused
+    mock_current_time = 1.6f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 1);
+    
+    // Unpause the invocation
+    CallaterUnpause(ref);
+    
+    // Advance time to trigger the callback again
+    mock_current_time = 2.7f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 2);
+}
+
+void TestPauseUnpauseGID() {
+    TEST("Pause and Unpause group invocations");
+    setup();
+    
+    const uint64_t GROUP_ID = 321;
+    // Schedule two repeating invocations with a group ID.
+    CallaterInvokeRepeatGID(GroupCallback, NULL, 0.5f, 1.0f, GROUP_ID);
+    CallaterInvokeRepeatGID(GroupCallback, NULL, 0.5f, 1.0f, GROUP_ID);
+    
+    // Let them execute once.
+    mock_current_time = 0.6f;
+    CallaterUpdate();
+    ASSERT(group_callback_count == 2);
+    
+    // Pause the group
+    CallaterPauseGID(GROUP_ID);
+    
+    // Advance time; group callbacks should not fire while paused.
+    mock_current_time = 1.6f;
+    CallaterUpdate();
+    ASSERT(group_callback_count == 2);
+    
+    // Unpause the group using the new name.
+    CallaterUnpauseGID(GROUP_ID);
+    
+    // Advance time; callbacks should resume.
+    mock_current_time = 2.7f;
+    CallaterUpdate();
+    ASSERT(group_callback_count == 4);
+}
+
+void TestSetGetArg() {
+    TEST("Set and Get argument");
+    setup();
+    int data = 42;
+    CallaterRef ref = CallaterInvoke(BasicCallback, &data, 0.5f);
+    ASSERT(CallaterGetArg(ref) == &data);
+    int newData = 100;
+    CallaterSetArg(ref, &newData);
+    ASSERT(CallaterGetArg(ref) == &newData);
+}
+
+void TestGetSetFunc() {
+    TEST("Get and Set function pointer");
+    setup();
+    CallaterRef ref = CallaterInvoke(BasicCallback, NULL, 0.5f);
+    ASSERT(CallaterGetFunc(ref) == BasicCallback);
+    CallaterSetFunc(ref, RepeatCallback);
+    ASSERT(CallaterGetFunc(ref) == RepeatCallback);
+}
+
+void TestShrinkToFit() {
+    TEST("Shrink to fit");
+    setup();
+    // Add several invocations.
+    for (int i = 0; i < 10; i++) {
+        CallaterInvoke(BasicCallback, NULL, 1.0f);
+    }
+    // Shrink the internal data structures.
+    CallaterShrinkToFit();
+    
+    // Advance time so that callbacks are invoked.
+    mock_current_time = 1.1f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 10);
+}
+
+void TestDeinit() {
+    TEST("Deinit releases memory and stops invocations");
+    setup();
+    // Create a repeating callback.
+    CallaterRef ref = CallaterInvokeRepeat(BasicCallback, NULL, 0.5f, 1.0f);
+    mock_current_time = 0.6f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 1);
+    
+    // Deinitialize the context.
+    CallaterDeinit();
+    
+    // Reinitialize and check that no invocations persist.
+    CallaterInit();
+    basic_callback_count = 0;
+    mock_current_time = 1.6f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 0);
+}
+
+void TestStopRepeat() {
+    TEST("Stop repeat explicitly");
+    setup();
+    CallaterRef ref = CallaterInvokeRepeat(BasicCallback, NULL, 0.5f, 1.0f);
+    mock_current_time = 0.6f;
+    CallaterStopRepeat(ref);
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 1);
+    
+    // Stop the repeating callback.
+    
+    // Advance time; the callback should no longer fire.
+    mock_current_time = 1.6f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 1);
+}
+
+void TestCancelPausedInvocation() {
+    TEST("Cancel paused invocation");
+    setup();
+    CallaterRef ref = CallaterInvoke(BasicCallback, NULL, 0.5f);
+    // Pause then cancel the invocation.
+    CallaterPause(ref);
+    CallaterCancel(ref);
+    
+    mock_current_time = 1.0f;
+    CallaterUpdate();
+    ASSERT(basic_callback_count == 0);
+}
+
+// =====================
+// Main Function
+// =====================
+
 int main() {
     printf("Starting Callater tests\n");
     
@@ -428,6 +587,16 @@ int main() {
     TestChangeGroupIdDuringCallback();
     TestSetNewFunctionDuringCallback();
     TestStopRepeatDuringCallback();
+    
+    // New tests for pausing and additional APIs.
+    TestPauseUnpause();
+    TestPauseUnpauseGID();
+    TestSetGetArg();
+    TestGetSetFunc();
+    TestShrinkToFit();
+    TestDeinit();
+    TestStopRepeat();
+    TestCancelPausedInvocation();
     
     printf("\nTest results: %d/%d passed\n", success_counter, assert_counter);
     return success_counter == assert_counter ? 0 : 1;
