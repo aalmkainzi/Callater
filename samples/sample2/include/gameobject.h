@@ -15,10 +15,10 @@
 
 static uint32_t gameObjTag;
 
-static void Init(GameObject*, void*);
-static void Update(GameObject*);
-static void Draw(GameObject*);
-static void Deinit(GameObject*);
+static void Init(GameObjectHandle, void*);
+static void Update(GameObjectHandle);
+static void Draw(GameObjectHandle);
+static void Deinit(GameObjectHandle);
 
 static inline uint32_t ThisTag()
 {

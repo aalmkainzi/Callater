@@ -7,6 +7,9 @@
 #include <stdalign.h>
 #include "raylib.h"
 
+#define TYPE_PUN(x, to) \
+((union { typeof(to) AsTo; typeof(x) AsOld; }){.AsOld = x}.AsTo)
+
 #define DECL_GAMEOBJECT(name, ...) \
 typedef struct name \
 { \
@@ -14,23 +17,27 @@ typedef struct name \
     __VA_OPT__(alignas(max_align_t) __VA_ARGS__ data;) \
 } name
 
-struct GameObject;
+typedef struct GameObjectHandle
+{
+    uint32_t tag;
+    uint32_t idx;
+} GameObjectHandle;
 
 typedef struct GameObjectCallbacks
 {
-    void(*init)  (struct GameObject*, void*);
-    void(*update)(struct GameObject*);
-    void(*draw)  (struct GameObject*);
-    void(*deinit)(struct GameObject*);
+    void(*init)  (GameObjectHandle, void*);
+    void(*update)(GameObjectHandle);
+    void(*draw)  (GameObjectHandle);
+    void(*deinit)(GameObjectHandle);
 } GameObjectCallbacks;
 
 typedef struct GameObjectHeader
 {
     const uint64_t id;
-    const uint64_t index;
     Vector2 pos;
+    const uint32_t index;
     const uint32_t tag;
-    // bool destroy;
+    bool destroyed;
 } GameObjectHeader;
 
 typedef struct GameObject
@@ -39,12 +46,14 @@ typedef struct GameObject
     alignas(max_align_t) unsigned char anyData[];
 } GameObject;
 
+GameObject *GetGameObject(GameObjectHandle handle);
+GameObjectHandle GetHandle(GameObject *go);
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName);
 GameObject *AllocGameObject(uint32_t tag);
 void DrawAllGameObjects();
 void UpdateAllGameObjects();
-uint32_t GameObjectTag(GameObject *go);
-void DestroyGameObject(GameObject *go);
+uint32_t GameObjectTag(GameObjectHandle handle);
+void DestroyGameObject(GameObject *handle);
 
 GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg);
 GameObject *CreateGameObject_ByName(const char *name, void *arg);

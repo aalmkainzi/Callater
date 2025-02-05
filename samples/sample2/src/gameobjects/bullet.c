@@ -7,9 +7,9 @@
 #define GAMEOBJECT_TYPE Bullet
 #include "gameobject.h"
 
-static void Init(GameObject *go, void *arg)
+static void Init(GameObjectHandle handle, void *arg)
 {
-    Bullet *bullet = (Bullet*) go;
+    Bullet *bullet = (Bullet*) GetGameObject(handle);
     bullet->data = *(struct BulletData*)arg;
     
     bullet->data.target = playerInstance->gameObjectHeader.pos;
@@ -26,9 +26,9 @@ static Vector2 Vector2MultFloat(Vector2 v, float f)
     };
 }
 
-static void Update(GameObject *go)
+static void Update(GameObjectHandle handle)
 {
-    Bullet *bullet = (Bullet*) go;
+    Bullet *bullet = (Bullet*) GetGameObject(handle);
     
     bullet->gameObjectHeader.pos =
     Vector2Add(bullet->gameObjectHeader.pos, 
@@ -67,13 +67,13 @@ static void Update(GameObject *go)
     }
 }
 
-static void Draw(GameObject *go)
+static void Draw(GameObjectHandle handle)
 {
-    Bullet *bullet = (Bullet*) go;
+    Bullet *bullet = (Bullet*) GetGameObject(handle);
     DrawCircleV(bullet->gameObjectHeader.pos, bullet->data.radius, RED);
 }
 
-static void Deinit(GameObject *go)
+static void Deinit(GameObjectHandle handle)
 {
-    (void) go;
+    (void) handle;
 }

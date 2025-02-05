@@ -15,11 +15,11 @@ Player *playerInstance = {0};
 static void HandlePlayerInput(Player *p);
 static void HandlePlayerMovement(Player *p);
 
-static void Init(GameObject *go, void *arg)
+static void Init(GameObjectHandle handle, void *arg)
 {
     (void) arg;
     
-    Player *player = (Player*)go;
+    Player *player = (Player*) GetGameObject(handle);
     playerInstance = player;
     player->data.radius = 15.5f;
     player->data.speed = 355.0f;
@@ -29,24 +29,25 @@ static void Init(GameObject *go, void *arg)
     player->gameObjectHeader.pos = (Vector2){windowWidth / 2.0f, windowHeight / 2.0f};
 }
 
-static void Update(GameObject *go)
+static void Update(GameObjectHandle handle)
 {
+    GameObject *go = GetGameObject(handle);
     HandlePlayerInput((Player*)go);
     HandlePlayerMovement((Player*)go);
 }
 
-static void Draw(GameObject *go)
+static void Draw(GameObjectHandle handle)
 {
-    Player *player = (Player*)go;
+    Player *player = (Player*) GetGameObject(handle);
     DrawCircleV(player->gameObjectHeader.pos, player->data.radius, PURPLE);
     char buf[10] = {0};
     snprintf(buf, sizeof(buf), "%hhd", player->data.health);
     DrawText(buf, 10, 10, 55, player->data.textColor);
 }
 
-static void Deinit(GameObject *go)
+static void Deinit(GameObjectHandle handle)
 {
-    (void) go;
+    (void) handle;
 }
 
 void HandlePlayerInput(Player *p)
@@ -102,12 +103,9 @@ void HandlePlayerMovement(Player *p)
     p->data.velocity.y = Lerp(p->data.velocity.y, 0, 0.5f * deltaTime);
 }
 
-#define TYPE_PUN(x, to) \
-((union { typeof(to) AsTo; typeof(x) AsOld; }){.AsOld = x}.AsTo)
-
 void ResetTextColor(void *arg, CallaterRef invokeRef)
 {
-    Player *player = arg; // can just use playerInstance here...
+    Player *player = (Player*) GetGameObject(TYPE_PUN(arg, GameObjectHandle)); // can just use playerInstance here...
     
     player->data.colorChangeInvokeRef = CALLATER_REF_ERR;
     player->data.textColor = WHITE;
@@ -128,7 +126,7 @@ void PlayerTakeDamage(uint8_t dmg)
     {
         CallaterCancel(player->data.colorChangeInvokeRef);
     }
-    InvokeGID(ResetTextColor, player, 0.2f, player->gameObjectHeader.id);
+    InvokeGID(ResetTextColor, TYPE_PUN(GetHandle((GameObject*) player), void*), 0.2f, player->gameObjectHeader.id);
 }
 
 void PlayerHeal(uint8_t healBy)
@@ -141,5 +139,5 @@ void PlayerHeal(uint8_t healBy)
     {
         CallaterCancel(player->data.colorChangeInvokeRef);
     }
-    InvokeGID(ResetTextColor, player, 0.2f, player->gameObjectHeader.id);
+    InvokeGID(ResetTextColor, TYPE_PUN(GetHandle((GameObject*) player), void*), 0.2f, player->gameObjectHeader.id);
 }

@@ -1,3 +1,4 @@
+#include "game.h"
 #include "raylib.h"
 #include "callater.h"
 #include "gameobjects/enemy_spawner.h"
@@ -5,7 +6,7 @@
 #define GAMEOBJECT_TYPE EnemySpawner
 #include "gameobject.h"
 
-uint32_t enemyTag = (uint32_t)-1;
+static uint32_t enemyTag = (uint32_t)-1;
 
 struct EnemyData RandomEnemyData()
 {
@@ -20,7 +21,7 @@ struct EnemyData RandomEnemyData()
     ret.bulletData = (struct BulletData){
         .color = RED,
         .radius = 5.0f,
-        .speed = RandomFloat(35.0f, 65.5f),
+        .speed = RandomFloat(35.0f, 65.5f)
     };
     return ret;
 }
@@ -29,14 +30,14 @@ void SteadySpawning(void *arg, CallaterRef invokeRef)
 {
     (void) invokeRef;
     
-    EnemySpawner *spawner = arg;
+    EnemySpawner *spawner = (EnemySpawner*) GetGameObject(TYPE_PUN(arg, GameObjectHandle));
     spawner->data.nextEnemy = RandomEnemyData();
     CreateGameObject(enemyTag, &spawner->data.nextEnemy);
 }
 
 void SpeedUpSpawning(void *arg, CallaterRef invokeRef)
 {
-    EnemySpawner *spawner = arg;
+    EnemySpawner *spawner = (EnemySpawner*) GetGameObject(TYPE_PUN(arg, GameObjectHandle));
     spawner->data.nextEnemy = RandomEnemyData();
     CreateGameObject(enemyTag, &spawner->data.nextEnemy);
     
@@ -51,27 +52,27 @@ void SpeedUpSpawning(void *arg, CallaterRef invokeRef)
     }
 }
 
-static void Init(GameObject *go, void *arg)
+static void Init(GameObjectHandle handle, void *arg)
 {
     (void) arg;
     
-    EnemySpawner *spawner = (EnemySpawner*) go;
+    EnemySpawner *spawner = (EnemySpawner*) GetGameObject(handle);
     enemyTag = (enemyTag == (uint32_t)-1 ? NameToTag("Enemy") : enemyTag);
     spawner->data.spawnSpeed = 5.0f;
-    InvokeRepeatGID(SpeedUpSpawning, go, spawner->data.spawnSpeed, spawner->data.spawnSpeed, spawner->gameObjectHeader.id);
+    InvokeRepeatGID(SpeedUpSpawning, TYPE_PUN(handle, void*), spawner->data.spawnSpeed, spawner->data.spawnSpeed, spawner->gameObjectHeader.id);
 }
 
-static void Update(GameObject *go)
+static void Update(GameObjectHandle handle)
 {
-    (void) go;
+    (void) handle;
 }
 
-static void Draw(GameObject *go)
+static void Draw(GameObjectHandle handle)
 {
-    (void) go;
+    (void) handle;
 }
 
-static void Deinit(GameObject *go)
+static void Deinit(GameObjectHandle handle)
 {
-    (void) go;
+    (void) handle;
 }
