@@ -39,6 +39,16 @@ typedef struct GameObject
     alignas(max_align_t) unsigned char anyData[];
 } GameObject;
 
+typedef struct Scene
+{
+    uint64_t count;
+    uint32_t *tags;
+    void **args;
+} Scene;
+
+void GameLoop(Scene startScene);
+void LoadScene(Scene scene);
+void UnloadScene();
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName);
 GameObject *AllocGameObject(uint32_t tag);
 void DrawAllGameObjects();

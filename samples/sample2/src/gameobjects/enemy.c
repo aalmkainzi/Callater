@@ -57,8 +57,8 @@ static void Draw(GameObject *go)
     Enemy *enemy = (Enemy*) go;
     DrawCircleV(enemy->gameObjectHeader.pos, enemy->data.radius, enemy->data.color);
     char idstr[10] = {0};
-    sprintf(idstr, "%llu", enemy->gameObjectHeader.id);
-    DrawTextEx(GetFontDefault(), idstr, enemy->gameObjectHeader.pos, enemy->data.radius * 5.0f, 1.0f, WHITE);
+    sprintf(idstr, "%zu", enemy->gameObjectHeader.id);
+    DrawTextEx(GetFontDefault(), idstr, enemy->gameObjectHeader.pos, enemy->data.radius * 1.f, 1.0f, WHITE);
 }
 
 static void Deinit(GameObject *go)

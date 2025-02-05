@@ -1,7 +1,9 @@
+#include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
 #include "callater.h"
 #include "game.h"
+#include "raylib.h"
 #include "raymath.h"
 
 typedef struct GameObjectGroup
@@ -22,6 +24,7 @@ typedef struct GameState
 GameState gameState = { 0 };
 uint32_t nextGameObjectTag = 0;
 uint64_t nextId = 0;
+Scene currentScene = {0};
 
 static void *ArrayMaybeGrow(void *array, uint64_t *cap, uint64_t count, uint64_t elmSize)
 {
@@ -102,6 +105,43 @@ void UpdateAllGameObjects()
     }
 }
 
+jmp_buf newSceneLoaded;
+
+void GameLoop(Scene startScene)
+{
+    currentScene = startScene;
+    
+    //if(
+        setjmp(newSceneLoaded);
+    // == 69
+    //)
+    // {
+    //     printf("SETJMPED\n");
+    //     for(uint64_t i = 0 ; i < currentScene.count ; i++)
+    //     {
+    //         printf("%d : %s\n", currentScene.tags[i], TagToName(currentScene.tags[i]));
+    //     }
+    // }
+    
+    for(uint64_t i = 0 ; i < currentScene.count ; i++)
+    {
+        CreateGameObject_ByTag(currentScene.tags[i], currentScene.args[i]);
+    }
+    
+    while(!WindowShouldClose())
+    {
+        BeginDrawing();
+            
+            ClearBackground((volatile Color){0,0,0,255});
+            
+            DrawAllGameObjects();
+            UpdateAllGameObjects();
+            
+        CallaterUpdate();
+        EndDrawing();
+    }
+}
+
 GameObject *CreateGameObject_ByTag(uint32_t tag, void *arg)
 {
     GameObject *ret = AllocGameObject(tag);
@@ -146,6 +186,28 @@ uint32_t NameToTag(const char *typeName)
 const char *TagToName(uint32_t tag)
 {
     return gameState.gameObjectGroups[tag].name;
+}
+
+void LoadScene(Scene scene)
+{
+    currentScene = scene;
+    EndDrawing();
+    longjmp(newSceneLoaded, 69);
+}
+
+void UnloadScene()
+{
+    for(uint64_t i = 0 ; i < gameState.count ; i++)
+    {
+        GameObjectGroup *group = &gameState.gameObjectGroups[i];
+        for(uint64_t j = 0 ; j < group->count ; j++)
+        {
+            group->callbacks.deinit(group->objs[j]);
+            CallaterCancelGID(group->objs[j]->gameObjectHeader.id);
+            free(group->objs[j]);
+        }
+        group->count = 0;
+    }
 }
 
 bool CirclesOverlapping(Circle a, Circle b)

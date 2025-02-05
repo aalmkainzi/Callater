@@ -8,6 +8,8 @@
 int windowWidth = 1280;
 int windowHeight = 720;
 
+Scene defaultScene;
+
 int main()
 {
     CallaterInit();
@@ -16,20 +18,13 @@ int main()
     SeedRNG(time(NULL));
     
     uint32_t playerTag = NameToTag("Player");
-    CreateGameObject(playerTag, NULL);
-    
     uint32_t spawnerTag = NameToTag("EnemySpawner");
-    CreateGameObject(spawnerTag, NULL);
-    while(!WindowShouldClose())
-    {
-        BeginDrawing();
-            
-            ClearBackground(BLACK);
-            
-            DrawAllGameObjects();
-            UpdateAllGameObjects();
-            
-        CallaterUpdate();
-        EndDrawing();
-    }
+    
+    defaultScene = (Scene){
+        .tags  = (uint32_t[]){playerTag, spawnerTag},
+        .args  = (void*[])   {NULL     , NULL},
+        .count = 2
+    };
+    
+    GameLoop(defaultScene);
 }

@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include "raylib.h"
 #include "raymath.h"
@@ -41,7 +40,7 @@ static void Draw(GameObject *go)
     DrawCircleV(player->gameObjectHeader.pos, player->data.radius, PURPLE);
     char buf[10] = {0};
     snprintf(buf, sizeof(buf), "%hhd", player->data.health);
-    DrawText(buf, 10, 10, 55, player->data.textColor);
+    DrawTextEx(GetFontDefault(), buf, (Vector2){10.0f,10.0f}, 65.f, 1.0f, player->data.textColor);
 }
 
 static void Deinit(GameObject *go)
@@ -115,20 +114,23 @@ void ResetTextColor(void *arg, CallaterRef invokeRef)
 
 void PlayerTakeDamage(uint8_t dmg)
 {
+    extern Scene defaultScene;
+    
     Player *player = (Player*) playerInstance;
     player->data.health -= dmg;
     player->data.textColor = RED;
     
     if(player->data.health <= 0)
     {
-        exit(0);
+        UnloadScene();
+        LoadScene(defaultScene);
     }
     
     if( !CallaterRefError(player->data.colorChangeInvokeRef) )
     {
         CallaterCancel(player->data.colorChangeInvokeRef);
     }
-    InvokeGID(ResetTextColor, player, 0.2f, player->gameObjectHeader.id);
+    InvokeGID(ResetTextColor, player, 0.5f, player->gameObjectHeader.id);
 }
 
 void PlayerHeal(uint8_t healBy)
@@ -141,5 +143,5 @@ void PlayerHeal(uint8_t healBy)
     {
         CallaterCancel(player->data.colorChangeInvokeRef);
     }
-    InvokeGID(ResetTextColor, player, 0.2f, player->gameObjectHeader.id);
+    InvokeGID(ResetTextColor, player, 0.5f, player->gameObjectHeader.id);
 }
