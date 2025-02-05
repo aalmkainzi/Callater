@@ -40,6 +40,13 @@ typedef struct CallaterPauseArray
     uint64_t count, cap;
 } CallaterPauseArray;
 
+typedef struct CallaterInvokeData
+{
+    uint64_t groupId;
+    uint64_t pausedIndex;
+    float repeatRate; // if neg, then no repeat
+} CallaterInvokeData;
+
 typedef struct CallaterTable
 {
     uint64_t cap;
@@ -51,9 +58,8 @@ typedef struct CallaterTable
     void **args;
     uint64_t startSec;
     uint64_t clockFreq;
-    uint64_t *groupIDs;
     float *invokeTimes;
-    float *repeatRates; // if neg, then no repeat
+    CallaterInvokeData *invokeData;
     CallaterPauseArray pausedInvokes;
     float minInvokeTime;
     float lastUpdated;
@@ -133,8 +139,7 @@ void CallaterInit()
     table.funcs  = calloc(table.cap, sizeof(*table.funcs));
     table.args   = calloc(table.cap, sizeof(*table.args));
     table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
-    table.repeatRates = malloc(table.cap * sizeof(*table.repeatRates));
-    table.groupIDs = calloc(table.cap, sizeof(*table.groupIDs));
+    table.invokeData = malloc(table.cap * sizeof(*table.invokeData));
     table.pausedInvokes.cap = 32;
     table.pausedInvokes.pausedInvokes = malloc(table.pausedInvokes.cap * sizeof(*table.pausedInvokes.pausedInvokes));
     
@@ -149,14 +154,21 @@ static void CallaterNoop(void *arg, CallaterRef ref)
     (void)ref;
 }
 
+static void CallaterRemovePause(uint64_t index);
+
 static void CallaterPopInvoke(uint64_t idx)
 {
     table.noopCount += (table.funcs[idx] != CallaterNoop);
     table.funcs[idx] = CallaterNoop;
     table.args[idx] = NULL;
     table.invokeTimes[idx] = INFINITY;
-    table.groupIDs[idx] = (uint64_t)-1;
-    table.repeatRates[idx] = INFINITY;
+    table.invokeData[idx].groupId = (uint64_t)-1;
+    table.invokeData[idx].repeatRate = INFINITY;
+    
+    if(table.invokeData[idx].pausedIndex != (uint64_t)-1)
+    {
+        CallaterRemovePause(table.invokeData[idx].pausedIndex);
+    }
 }
 
 static void CallaterReallocTable(uint64_t newCap)
@@ -171,8 +183,7 @@ static void CallaterReallocTable(uint64_t newCap)
         32,
         &table.delaysPtrOffset
     );
-    table.repeatRates = realloc(table.repeatRates, newCap * sizeof(*table.repeatRates));
-    table.groupIDs = realloc(table.groupIDs, newCap * sizeof(*table.groupIDs));
+    table.invokeData = realloc(table.invokeData, newCap * sizeof(*table.invokeData));
     table.cap = newCap;
 }
 
@@ -190,13 +201,13 @@ static bool CallaterMaybeGrowTable()
 static void CallaterCallFunc(uint64_t idx, float curTime)
 {
     table.funcs[idx](table.args[idx], (CallaterRef){idx});
-    if(signbit(table.repeatRates[idx]))
+    if(signbit(table.invokeData[idx].repeatRate))
     {
         CallaterPopInvoke(idx);
     }
     else
     {
-        table.invokeTimes[idx] = curTime + table.repeatRates[idx];
+        table.invokeTimes[idx] = curTime + table.invokeData[idx].repeatRate;
     }
 }
 
@@ -316,9 +327,9 @@ CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float 
     table.funcs      [nextSpot] = func;
     table.invokeTimes[nextSpot] = delay + curTime;
     table.args       [nextSpot] = arg;
-    table.repeatRates[nextSpot] = -delay;
-    table.groupIDs   [nextSpot] = groupId;
-    
+    table.invokeData [nextSpot].repeatRate  = -delay;
+    table.invokeData [nextSpot].groupId     = groupId;
+    table.invokeData [nextSpot].pausedIndex = (uint64_t)-1;
     if(table.invokeTimes[nextSpot] < table.minInvokeTime)
     {
         table.minInvokeTime = table.invokeTimes[nextSpot];
@@ -380,7 +391,7 @@ void CallaterCancelGID(uint64_t groupId)
 {
     for(uint64_t i = 0 ; i < table.count ; i++)
     {
-        if(table.groupIDs[i] == groupId)
+        if(table.invokeData[i].groupId == groupId)
         {
             CallaterPopInvoke(i);
         }
@@ -421,17 +432,17 @@ void CallaterCancel(CallaterRef ref)
 
 void CallaterStopRepeat(CallaterRef ref)
 {
-    table.repeatRates[ref.ref] = -1;
+    table.invokeData[ref.ref].repeatRate = -1;
 }
 
 void CallaterSetRepeatRate(CallaterRef ref, float newRepeatRate)
 {
-    table.repeatRates[ref.ref] = newRepeatRate;
+    table.invokeData[ref.ref].repeatRate = newRepeatRate;
 }
 
 float CallaterGetRepeatRate(CallaterRef ref)
 {
-    return table.repeatRates[ref.ref];
+    return table.invokeData[ref.ref].repeatRate;
 }
 
 void CallaterSetFunc(CallaterRef ref, void(*func)(void*, CallaterRef))
@@ -456,12 +467,12 @@ void *CallaterGetArg(CallaterRef ref)
 
 void CallaterSetGID(CallaterRef ref, uint64_t groupId)
 {
-    table.groupIDs[ref.ref] = groupId;
+    table.invokeData[ref.ref].groupId = groupId;
 }
 
 uint64_t CallaterGetGID(CallaterRef ref)
 {
-    return table.groupIDs[ref.ref];
+    return table.invokeData[ref.ref].groupId;
 }
 
 uint64_t CallaterGroupCount(uint64_t groupId)
@@ -469,7 +480,7 @@ uint64_t CallaterGroupCount(uint64_t groupId)
     uint64_t count = 0;
     for(uint64_t i = 0 ; i <= table.lastRealInvocation ; i++)
     {
-        count += (table.groupIDs[i] == groupId);
+        count += (table.invokeData[i].groupId == groupId);
     }
     return count;
 }
@@ -479,7 +490,7 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
     uint64_t count = 0;
     for(uint64_t i = 0 ; i <= table.lastRealInvocation ; i++)
     {
-        if(table.groupIDs[i] == groupId)
+        if(table.invokeData[i].groupId == groupId)
         {
             refsOut[count].ref = i;
             count += 1;
@@ -490,6 +501,9 @@ uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
 
 void CallaterPause(CallaterRef ref)
 {
+    if(table.invokeData[ref.ref].pausedIndex != (uint64_t)-1)
+        return;
+    
     CallaterPauseArray *pauseArray = &table.pausedInvokes;
     if(pauseArray->count >= pauseArray->cap)
     {
@@ -501,56 +515,65 @@ void CallaterPause(CallaterRef ref)
         );
     }
     
-    if(table.minInvokeTime == table.invokeTimes[ref.ref])
+    float invokeTime = table.invokeTimes[ref.ref];
+    float delay = table.invokeTimes[ref.ref] - table.lastUpdated;
+    // TODO pausing twice will fuck everything up. add a flag at the invoke?
+    // good sol: add paused flags bitmap: 0001 means CallaterRef{3} is paused
+    pauseArray->pausedInvokes[pauseArray->count] = (CallaterPausedInvoke){.ref = ref, .delay = delay};
+    table.invokeData[ref.ref].pausedIndex = pauseArray->count;
+    table.invokeTimes[ref.ref] = INFINITY;
+    pauseArray->count += 1;
+    if(table.minInvokeTime == invokeTime)
     {
         CallaterFindNewMinInvokeTime();
     }
-    
-    float delay = table.invokeTimes[ref.ref] - table.lastUpdated;
-    // TODO pausing twice will fuck everything up. add a flag at the invoke?
-    pauseArray->pausedInvokes[pauseArray->count] = (CallaterPausedInvoke){.ref = ref, .delay = delay};
-    table.invokeTimes[ref.ref] = INFINITY;
-    
-    pauseArray->count += 1;
 }
 
 void CallaterPauseGID(uint64_t groupId)
 {
     for(uint64_t i = 0 ; i < table.count ; i++)
     {
-        if(table.groupIDs[i] == groupId)
+        if(table.invokeData[i].groupId == groupId)
         {
             CallaterPause((CallaterRef){i});
         }
     }
 }
 
-void CallaterUnpause(CallaterRef ref)
+static void CallaterRemovePause(uint64_t index)
 {
     CallaterPauseArray *pauseArray = &table.pausedInvokes;
-    for(uint64_t i = 0 ; i < pauseArray->count ; i++)
+    pauseArray->pausedInvokes[index] = pauseArray->pausedInvokes[pauseArray->count - 1];
+    CallaterRef movedRef = pauseArray->pausedInvokes[index].ref;
+    table.invokeData[movedRef.ref].pausedIndex = index;
+    pauseArray->count -= 1;
+}
+
+void CallaterResume(CallaterRef ref)
+{
+    CallaterPauseArray *pauseArray = &table.pausedInvokes;
+    uint64_t index = table.invokeData[ref.ref].pausedIndex;
+    if(index != (uint64_t)-1)
     {
-        if(pauseArray->pausedInvokes[i].ref.ref == ref.ref)
-        {
-            CallaterPausedInvoke pi = pauseArray->pausedInvokes[i];
-            table.invokeTimes[ref.ref] = pi.delay + CallaterCurrentTime();
-            
-            pauseArray->pausedInvokes[i] = pauseArray->pausedInvokes[pauseArray->count - 1];
-            pauseArray->count -= 1;
-            CallaterFindNewMinInvokeTime();
-            return;
-        }
+        CallaterPausedInvoke pi = pauseArray->pausedInvokes[index];
+        table.invokeTimes[ref.ref] = pi.delay + CallaterCurrentTime();
+        
+        CallaterRemovePause(index);
+        
+        // TODO only do this if this is lower than table.minInvokeTime
+        CallaterFindNewMinInvokeTime();
+        return;
     }
 }
 
-void CallaterUnpauseGID(uint64_t groupId)
+void CallaterResumeGID(uint64_t groupId)
 {
     CallaterPauseArray *pauseArray = &table.pausedInvokes;
     for(uint64_t i = 0 ; i < pauseArray->count ; i++)
     {
         if(CallaterGetGID(pauseArray->pausedInvokes[i].ref) == groupId)
         {
-            CallaterUnpause(pauseArray->pausedInvokes[i].ref);
+            CallaterResume(pauseArray->pausedInvokes[i].ref);
             i -= 1;
         }
     }
@@ -593,7 +616,7 @@ void CallaterDeinit()
     free(table.funcs);
     free(table.args);
     free((char*)table.invokeTimes - table.delaysPtrOffset);
-    free(table.repeatRates);
-    free(table.groupIDs);
+    free(table.invokeData);
+    free(table.pausedInvokes.pausedInvokes);
     table = (CallaterTable){0};
 }

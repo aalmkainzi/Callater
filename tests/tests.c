@@ -434,7 +434,7 @@ void TestPauseUnpause() {
     ASSERT(basic_callback_count == 1);
     
     // Unpause the invocation
-    CallaterUnpause(ref);
+    CallaterResume(ref);
     
     // Advance time to trigger the callback again
     mock_current_time = 2.7f;
@@ -465,7 +465,7 @@ void TestPauseUnpauseGID() {
     ASSERT(group_callback_count == 2);
     
     // Unpause the group using the new name.
-    CallaterUnpauseGID(GROUP_ID);
+    CallaterResumeGID(GROUP_ID);
     
     // Advance time; callbacks should resume.
     mock_current_time = 2.7f;

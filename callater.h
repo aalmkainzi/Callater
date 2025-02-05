@@ -59,8 +59,8 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef));
 // pausing API
 void CallaterPause(CallaterRef ref);
 void CallaterPauseGID(uint64_t groupId);
-void CallaterUnpause(CallaterRef ref);
-void CallaterUnpauseGID(uint64_t groupId);
+void CallaterResume(CallaterRef ref);
+void CallaterResumeGID(uint64_t groupId);
 
 // Remove all invocations associated with `groupId`
 void CallaterCancelGID(uint64_t groupId);
