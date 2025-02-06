@@ -111,17 +111,7 @@ void GameLoop(Scene startScene)
 {
     currentScene = startScene;
     
-    //if(
-        setjmp(newSceneLoaded);
-    // == 69
-    //)
-    // {
-    //     printf("SETJMPED\n");
-    //     for(uint64_t i = 0 ; i < currentScene.count ; i++)
-    //     {
-    //         printf("%d : %s\n", currentScene.tags[i], TagToName(currentScene.tags[i]));
-    //     }
-    // }
+    setjmp(newSceneLoaded);
     
     for(uint64_t i = 0 ; i < currentScene.count ; i++)
     {

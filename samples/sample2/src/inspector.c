@@ -1,3 +1,4 @@
+#include <signal.h>
 #include "callater.c"
 #include "game.c"
 #include "game.h"
@@ -26,7 +27,11 @@ static void Init(GameObject *go, void *arg)
 
 static void Update(GameObject *go)
 {
-    ;
+    if(IsKeyPressed(KEY_B))
+    {
+        __builtin_debugtrap();
+        // raise(5);
+    }
 }
 
 void DrawInvoke(uint64_t idx)
