@@ -13,6 +13,7 @@ DECL_GAMEOBJECT(
         float burstDelay;
         float radius;
         Color color;
+        bool shootToggle;
         struct BulletData bulletData;
     }
 );

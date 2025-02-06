@@ -40,15 +40,15 @@ void SpeedUpSpawning(void *arg, CallaterRef invokeRef)
     spawner->data.nextEnemy = RandomEnemyData();
     CreateGameObject(enemyTag, &spawner->data.nextEnemy);
     
-    spawner->data.spawnSpeed -= 0.2f;
-    if(spawner->data.spawnSpeed <= 0.75f)
-    {
-        CallaterSetFunc(invokeRef, SteadySpawning);
-    }
-    else
-    {
-        CallaterSetRepeatRate(invokeRef, spawner->data.spawnSpeed);
-    }
+    // spawner->data.spawnSpeed -= 0.2f;
+    // if(spawner->data.spawnSpeed <= 0.75f)
+    // {
+    //     CallaterSetFunc(invokeRef, SteadySpawning);
+    // }
+    // else
+    // {
+    //     CallaterSetRepeatRate(invokeRef, spawner->data.spawnSpeed);
+    // }
 }
 
 static void Init(GameObject *go, void *arg)
@@ -57,7 +57,7 @@ static void Init(GameObject *go, void *arg)
     
     EnemySpawner *spawner = (EnemySpawner*) go;
     enemyTag = (enemyTag == (uint32_t)-1 ? NameToTag("Enemy") : enemyTag);
-    spawner->data.spawnSpeed = 5.0f;
+    spawner->data.spawnSpeed = 4.0f;
     InvokeRepeatGID(SpeedUpSpawning, go, spawner->data.spawnSpeed, spawner->data.spawnSpeed, spawner->gameObjectHeader.id);
 }
 

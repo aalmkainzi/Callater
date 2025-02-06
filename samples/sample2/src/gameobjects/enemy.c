@@ -15,6 +15,8 @@ void ShootAtPlayer(void *arg, CallaterRef invokeRef)
     (void) invokeRef;
     
     Enemy *enemy = arg;
+    
+    enemy->data.shootToggle ^= 1;
     struct BulletData bulletData = enemy->data.bulletData;
     bulletData.spawnPos = enemy->gameObjectHeader.pos;
     CreateGameObject(bulletTag, &bulletData);
