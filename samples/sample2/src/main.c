@@ -15,8 +15,7 @@ int main()
     CallaterInit();
     InitWindow(windowWidth, windowHeight, "Bam");
     
-    // SeedRNG(time(NULL));
-    
+#ifdef DEBUG
     uint32_t playerTag    = NameToTag("Player");
     uint32_t spawnerTag   = NameToTag("EnemySpawner");
     uint32_t inspectorTag = NameToTag("Inspector");
@@ -26,6 +25,18 @@ int main()
         .args  = (void*[])   {NULL     , NULL      , NULL},
         .count = 3
     };
+#else
+    SeedRNG(time(NULL));
+    
+    uint32_t playerTag    = NameToTag("Player");
+    uint32_t spawnerTag   = NameToTag("EnemySpawner");
+    
+    defaultScene = (Scene){
+        .tags  = (uint32_t[]){playerTag, spawnerTag},
+        .args  = (void*[])   {NULL     , NULL},
+        .count = 2
+    };
+#endif
     
     GameLoop(defaultScene);
 }
