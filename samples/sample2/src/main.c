@@ -15,7 +15,7 @@ int main()
     CallaterInit();
     InitWindow(windowWidth, windowHeight, "Bam");
     
-    SeedRNG(time(NULL));
+    // SeedRNG(time(NULL));
     
     uint32_t playerTag    = NameToTag("Player");
     uint32_t spawnerTag   = NameToTag("EnemySpawner");

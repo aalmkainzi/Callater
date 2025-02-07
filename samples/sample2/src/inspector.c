@@ -37,7 +37,6 @@ static void Update(GameObject *go)
     if(IsKeyPressed(KEY_B))
     {
         __builtin_debugtrap();
-        // raise(5);
     }
 }
 
@@ -48,7 +47,7 @@ void DrawInvoke(uint64_t idx)
 
 void ShowAllInvokes(GameObject *go)
 {
-    for(uint64_t i = 0 ; i < table.count ; i++)
+    for(uint64_t i = 0 ; i < table.nb ; i++)
     {
         if(table.funcs[i] != CallaterNoop)
         {

@@ -14,6 +14,7 @@ DECL_GAMEOBJECT(
         float radius;
         Color color;
         bool shootToggle;
+        bool invokeStarted;
         struct BulletData bulletData;
     }
 );
