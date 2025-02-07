@@ -40,7 +40,7 @@ static void Draw(GameObject *go)
     DrawCircleV(player->gameObjectHeader.pos, player->data.radius, PURPLE);
     char buf[10] = {0};
     snprintf(buf, sizeof(buf), "%hhd", player->data.health);
-    DrawTextEx(GetFontDefault(), buf, (Vector2){10.0f,10.0f}, 65.f, 1.0f, player->data.textColor);
+    DrawTextEx(GetFontDefault(), buf, (Vector2){10.0f,10.0f}, 64.f, 1.0f, player->data.textColor);
 }
 
 static void Deinit(GameObject *go)
