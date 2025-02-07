@@ -114,7 +114,7 @@ void ResetTextColor(void *arg, CallaterRef invokeRef)
 
 void PlayerTakeDamage(uint8_t dmg)
 {
-    return;
+    // return;
     extern Scene defaultScene;
     
     Player *player = (Player*) playerInstance;

@@ -1,8 +1,6 @@
-#include <signal.h>
 #include "callater.c"
 #include "callater.h"
 #include "game.c"
-#include "game.h"
 #include "raylib.h"
 #include "gameobjects/enemy.h"
 
@@ -40,22 +38,6 @@ static void Update(GameObject *go)
     }
 }
 
-void DrawInvoke(uint64_t idx)
-{
-    
-}
-
-void ShowAllInvokes(GameObject *go)
-{
-    for(uint64_t i = 0 ; i < table.nb ; i++)
-    {
-        if(table.funcs[i] != CallaterNoop)
-        {
-            
-        }
-    }
-}
-
 void ShowEnemyInvokes(GameObject *go)
 {
     Inspector *inspector = (Inspector*) go;
@@ -69,7 +51,7 @@ void ShowEnemyInvokes(GameObject *go)
     }
     
     float rectHeight = 55.0f;
-    for(uint64_t i = 0 ; i < arrlen(inspector->data.enemies) ; i++)
+    for(uint64_t i = 0, len = arrlen(inspector->data.enemies) ; i < len ; i++)
     {
         uint64_t nbFound = CallaterGetGroupRefs(inspector->data.enemyRefs + i, inspector->data.enemies[i]->gameObjectHeader.id);
         
@@ -90,9 +72,7 @@ void ShowEnemyInvokes(GameObject *go)
         
         CallaterRef ref = inspector->data.enemyRefs[i];
         char txt[256] = {0};
-        sprintf(txt, "E:%llu FR:%.3f INV:%llu", inspector->data.enemies[i]->gameObjectHeader.id, inspector->data.enemies[i]->data.fireRate,
-                 ref.ref);
-        // GuiLabel(rect, txt);
+        sprintf(txt, "E:%zu FR:%.3f INV:%zu", inspector->data.enemies[i]->gameObjectHeader.id, inspector->data.enemies[i]->data.fireRate, ref.ref);
         DrawTextEx(GetFontDefault(), txt, (Vector2){rect.x + 10.0f, rect.y + rect.height / 2.0f}, 24.0f, 1.5f, BLACK);
         
         DrawRectangle(rect.x + 180.0f, rect.y, 25, 12, inspector->data.enemies[i]->data.shootToggle ? RED : BLUE);
