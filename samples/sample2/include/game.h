@@ -47,8 +47,7 @@ typedef struct Scene
 } Scene;
 
 void GameLoop(Scene startScene);
-void LoadScene(Scene scene);
-void UnloadScene();
+[[noreturn]] void LoadScene(Scene scene);
 void PushGameObjectGroup(uint32_t tag, GameObjectCallbacks callbacks, uint64_t gameObjSize, const char *typeName);
 GameObject *AllocGameObject(uint32_t tag);
 void DrawAllGameObjects();

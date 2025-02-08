@@ -54,11 +54,9 @@ typedef struct CallaterInvokeData
 typedef struct CallaterTable
 {
     uint64_t cap;
-    uint64_t nb;
-    // uint64_t count;
+    uint64_t count;
     uint64_t noopCount;
     uint64_t nextEmptySpot;
-    //uint64_t lastRealInvocation; // index of last elm that isn't Noop
     void(**funcs)(void*, CallaterRef);
     void **args;
     uint64_t startSec;
@@ -149,7 +147,7 @@ void CallaterInit()
     table.pausedInvokes.pausedInvokes = malloc(table.pausedInvokes.cap * sizeof(*table.pausedInvokes.pausedInvokes));
     
     table.nextEmptySpot = 0;
-    table.nb = 0;
+    table.count = 0;
     table.minInvokeTime = INFINITY;
 }
 
@@ -194,7 +192,7 @@ static void CallaterReallocTable(uint64_t newCap)
 
 static bool CallaterMaybeGrowTable()
 {
-    if(table.cap <= table.nb)
+    if(table.cap <= table.count)
     {
         const uint64_t newCap = table.cap * 2;
         CallaterReallocTable(newCap);
@@ -227,13 +225,13 @@ static void CallaterFindNewLastInvocation(uint64_t startFrom)
             break;
         }
     }
-    table.nb = lastInvoke + 1;
+    table.count = lastInvoke + 1;
 }
 
 static void CallaterFindNewMinInvokeTime()
 {
     float newMinInvokeTime = INFINITY;
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         if(table.invokeTimes[i] < newMinInvokeTime)
         {
@@ -248,7 +246,7 @@ static void CallaterTick(float curTime)
     const __m256 curTimeVec = _mm256_set1_ps(curTime);
     
     uint64_t i;
-    for(i = 0 ; i + 7 < table.nb ; i += 8)
+    for(i = 0 ; i + 7 < table.count ; i += 8)
     {
         __m256 tableDelaysVec = _mm256_load_ps(table.invokeTimes + i);
         __m256 results = _mm256_cmp_ps(curTimeVec, tableDelaysVec, _CMP_GE_OQ);
@@ -267,7 +265,7 @@ static void CallaterTick(float curTime)
         }
     }
     
-    const int remaining = table.nb - i;
+    const int remaining = table.count - i;
     
     for(int j = 0 ; j < remaining ; j++)
     {
@@ -279,9 +277,9 @@ static void CallaterTick(float curTime)
     
     CallaterFindNewMinInvokeTime();
     
-    if(table.funcs[table.nb - 1] == CallaterNoop)
+    if(table.funcs[table.count - 1] == CallaterNoop)
     {
-        CallaterFindNewLastInvocation(table.nb - 1);
+        CallaterFindNewLastInvocation(table.count - 1);
     }
 }
 
@@ -291,7 +289,7 @@ void CallaterUpdate()
     table.lastUpdated = curTime;
     
     // do we even need the second term? minInvokeTime should be enough
-    if(curTime < table.minInvokeTime || table.nb == 0)
+    if(curTime < table.minInvokeTime || table.count == 0)
     {
         return;
     }
@@ -309,10 +307,10 @@ CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float 
     if(table.nextEmptySpot == (uint64_t)-1)
     {
         CallaterMaybeGrowTable();
-        table.nextEmptySpot = table.nb;
-        table.nb += 1;
+        table.nextEmptySpot = table.count;
+        table.count += 1;
     }
-    else if(table.nextEmptySpot < table.nb)
+    else if(table.nextEmptySpot < table.count)
     {
         // next empty spot is in the middle of the array
         // aka we're taking the spot of a noop and not increasing count
@@ -321,8 +319,8 @@ CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float 
     else
     {
         // next empty spot is at the back
-        table.nextEmptySpot = table.nb;
-        table.nb += 1;
+        table.nextEmptySpot = table.count;
+        table.count += 1;
     }
     
     float curTime = CallaterCurrentTime();
@@ -342,25 +340,25 @@ CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float 
     // assigning a new table.nextEmptySpot
     if(table.noopCount == 0)
     {
-        if(table.nb >= table.cap)
+        if(table.count >= table.cap)
         {
             table.nextEmptySpot = (uint64_t)-1;
         }
         else
         {
-            table.nextEmptySpot = table.nb;
+            table.nextEmptySpot = table.count;
         }
     }
     else
     {
-        if(table.nb < table.cap)
+        if(table.count < table.cap)
         {
-            table.nextEmptySpot = table.nb;
+            table.nextEmptySpot = table.count;
         }
         else
         {
             uint64_t nextEmptySpot = (uint64_t)-1;
-            for(uint64_t i = 0 ; i < table.nb ; i++)
+            for(uint64_t i = 0 ; i < table.count ; i++)
             {
                 if(table.funcs[i] == CallaterNoop)
                 {
@@ -393,7 +391,7 @@ float CallaterInvokesAfter(CallaterRef ref)
 
 void CallaterCancelGID(uint64_t groupId)
 {
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         if(table.invokeData[i].groupId == groupId)
         {
@@ -404,7 +402,7 @@ void CallaterCancelGID(uint64_t groupId)
 
 void CallaterCancelFunc(void(*func)(void*, CallaterRef))
 {
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         if(table.funcs[i] == func)
         {
@@ -415,7 +413,7 @@ void CallaterCancelFunc(void(*func)(void*, CallaterRef))
 
 CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef))
 {
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         if(table.funcs[i] == func)
         {
@@ -428,13 +426,13 @@ CallaterRef CallaterFuncRef(void(*func)(void*, CallaterRef))
 void CallaterCancel(CallaterRef ref)
 {
     bool isMinInvokeTime = table.invokeTimes[ref.ref] == table.minInvokeTime;
-    bool isLastInvocation = ref.ref == table.nb - 1;
+    bool isLastInvocation = ref.ref == table.count - 1;
     
     CallaterPopInvoke(ref.ref);
     
     if(isLastInvocation)
     {
-        CallaterFindNewLastInvocation(table.nb - 1);
+        CallaterFindNewLastInvocation(table.count - 1);
     }
     if(isMinInvokeTime)
     {
@@ -490,7 +488,7 @@ uint64_t CallaterGetGID(CallaterRef ref)
 uint64_t CallaterGroupCount(uint64_t groupId)
 {
     uint64_t count = 0;
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         count += (table.invokeData[i].groupId == groupId);
     }
@@ -500,7 +498,7 @@ uint64_t CallaterGroupCount(uint64_t groupId)
 uint64_t CallaterGetGroupRefs(CallaterRef *refsOut, uint64_t groupId)
 {
     uint64_t count = 0;
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         if(table.invokeData[i].groupId == groupId)
         {
@@ -529,8 +527,7 @@ void CallaterPause(CallaterRef ref)
     
     float invokeTime = table.invokeTimes[ref.ref];
     float delay = table.invokeTimes[ref.ref] - table.lastUpdated;
-    // TODO pausing twice will fuck everything up. add a flag at the invoke?
-    // good sol: add paused flags bitmap: 0001 means CallaterRef{3} is paused
+    
     pauseArray->pausedInvokes[pauseArray->count] = (CallaterPausedInvoke){.ref = ref, .delay = delay};
     table.invokeData[ref.ref].pausedIndex = pauseArray->count;
     table.invokeTimes[ref.ref] = INFINITY;
@@ -543,7 +540,7 @@ void CallaterPause(CallaterRef ref)
 
 void CallaterPauseGID(uint64_t groupId)
 {
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         if(table.invokeData[i].groupId == groupId)
         {
@@ -565,6 +562,7 @@ void CallaterResume(CallaterRef ref)
 {
     CallaterPauseArray *pauseArray = &table.pausedInvokes;
     uint64_t index = table.invokeData[ref.ref].pausedIndex;
+    table.invokeData[ref.ref].pausedIndex = (uint64_t)-1;
     if(index != (uint64_t)-1)
     {
         CallaterPausedInvoke pi = pauseArray->pausedInvokes[index];
@@ -599,7 +597,7 @@ bool CallaterRefError(CallaterRef ref)
 uint64_t CallaterCountNoop()
 {
     uint64_t count = 0;
-    for(uint64_t i = 0 ; i < table.nb ; i++)
+    for(uint64_t i = 0 ; i < table.count ; i++)
     {
         count += (table.funcs[i] == CallaterNoop);
     }
@@ -608,7 +606,7 @@ uint64_t CallaterCountNoop()
 
 void CallaterShrinkToFit()
 {
-    uint64_t newCap = table.nb + 1;
+    uint64_t newCap = table.count + 1;
     CallaterReallocTable(newCap);
     
 #if defined(DEBUG)
