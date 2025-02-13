@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include "game.h"
 #include "callater.h"
@@ -15,6 +16,8 @@ void ShootAtPlayer(void *arg, CallaterRef invokeRef)
     (void) invokeRef;
     
     Enemy *enemy = arg;
+    
+    enemy->data.shootToggle ^= 1;
     struct BulletData bulletData = enemy->data.bulletData;
     bulletData.spawnPos = enemy->gameObjectHeader.pos;
     CreateGameObject(bulletTag, &bulletData);
@@ -29,6 +32,7 @@ static void Init(GameObject *go, void *arg)
     enemy->gameObjectHeader.pos = enemy->data.spawnPos;
     
     InvokeRepeatGID(ShootAtPlayer, enemy, enemy->data.fireRate, enemy->data.fireRate, enemy->gameObjectHeader.id);
+    enemy->data.invokeStarted = true;
 }
 
 static void Update(GameObject *go)

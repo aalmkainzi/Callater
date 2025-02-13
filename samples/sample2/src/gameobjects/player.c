@@ -114,6 +114,7 @@ void ResetTextColor(void *arg, CallaterRef invokeRef)
 
 void PlayerTakeDamage(uint8_t dmg)
 {
+    // return;
     extern Scene defaultScene;
     
     Player *player = (Player*) playerInstance;
@@ -130,7 +131,8 @@ void PlayerTakeDamage(uint8_t dmg)
     {
         CallaterCancel(player->data.colorChangeInvokeRef);
     }
-    InvokeGID(ResetTextColor, player, 0.5f, player->gameObjectHeader.id);
+    
+    InvokeGID(ResetTextColor, player, 1.5f, player->gameObjectHeader.id);
 }
 
 void PlayerHeal(uint8_t healBy)
@@ -143,5 +145,6 @@ void PlayerHeal(uint8_t healBy)
     {
         CallaterCancel(player->data.colorChangeInvokeRef);
     }
-    InvokeGID(ResetTextColor, player, 0.5f, player->gameObjectHeader.id);
+    
+    InvokeGID(ResetTextColor, player, 1.5f, player->gameObjectHeader.id);
 }

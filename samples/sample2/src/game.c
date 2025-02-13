@@ -111,17 +111,7 @@ void GameLoop(Scene startScene)
 {
     currentScene = startScene;
     
-    //if(
-        setjmp(newSceneLoaded);
-    // == 69
-    //)
-    // {
-    //     printf("SETJMPED\n");
-    //     for(uint64_t i = 0 ; i < currentScene.count ; i++)
-    //     {
-    //         printf("%d : %s\n", currentScene.tags[i], TagToName(currentScene.tags[i]));
-    //     }
-    // }
+    setjmp(newSceneLoaded);
     
     for(uint64_t i = 0 ; i < currentScene.count ; i++)
     {
@@ -188,14 +178,7 @@ const char *TagToName(uint32_t tag)
     return gameState.gameObjectGroups[tag].name;
 }
 
-void LoadScene(Scene scene)
-{
-    currentScene = scene;
-    EndDrawing();
-    longjmp(newSceneLoaded, 69);
-}
-
-void UnloadScene()
+static void UnloadScene()
 {
     for(uint64_t i = 0 ; i < gameState.count ; i++)
     {
@@ -208,6 +191,14 @@ void UnloadScene()
         }
         group->count = 0;
     }
+}
+
+[[noreturn]] void LoadScene(Scene scene)
+{
+    UnloadScene();
+    currentScene = scene;
+    EndDrawing();
+    longjmp(newSceneLoaded, 69);
 }
 
 bool CirclesOverlapping(Circle a, Circle b)

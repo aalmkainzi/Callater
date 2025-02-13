@@ -57,7 +57,7 @@ static void Init(GameObject *go, void *arg)
     
     EnemySpawner *spawner = (EnemySpawner*) go;
     enemyTag = (enemyTag == (uint32_t)-1 ? NameToTag("Enemy") : enemyTag);
-    spawner->data.spawnSpeed = 5.0f;
+    spawner->data.spawnSpeed = 4.0f;
     InvokeRepeatGID(SpeedUpSpawning, go, spawner->data.spawnSpeed, spawner->data.spawnSpeed, spawner->gameObjectHeader.id);
 }
 
