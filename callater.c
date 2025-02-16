@@ -32,6 +32,19 @@
 #define CALLATER_FLT_AS_INT(f) \
 ((union{float asFloat; int32_t asInt;}){.asFloat = f}.asInt)
 
+/*
+
+This needs proper designing...
+First of all, users should be able to refer to the invocation by the CallaterRef.
+The CallaterRef returned from the Invoke functions must not be invalidated if the invocation is still there.
+meaning, it either can't be an index (because we're doing sorted array where indexes shift).
+Ideas:
+1) don't shift when removing, instead put NoOp there
+2) use linked list, where CallaterRef is pointer to the node
+3) give each entry an id, that id is the CallaterRef (using the ref then is O(n) because it must be searched first)
+
+*/
+
 typedef struct CallaterInvokeData
 {
     uint64_t groupId;
@@ -45,7 +58,7 @@ typedef struct OrderedArray
 } OrderedArray;
 
 static void OrderedArrayInit(OrderedArray *oa, uint64_t initCap);
-static void OrderedArrayPut(OrderedArray *oa, float newVal);
+static uint64_t OrderedArrayPut(OrderedArray *oa, float newVal);
 static void OrderedArrayPop(OrderedArray *oa, uint64_t index);
 static void OrderedArrayRealloc(OrderedArray *oa, uint64_t newCap);
 
@@ -315,72 +328,20 @@ CallaterRef CallaterInvoke(void(*func)(void*, CallaterRef), void* arg, float del
 
 CallaterRef CallaterInvokeGID(void(*func)(void*, CallaterRef), void *arg, float delay, uint64_t groupId)
 {
-    if(table.nextEmptySpot == (uint64_t)-1)
+    if(table.count >= table.cap)
     {
         CallaterMaybeGrowTable();
-        table.nextEmptySpot = table.count;
-        table.count += 1;
-    }
-    else if(table.nextEmptySpot < table.count)
-    {
-        // next empty spot is in the middle of the array
-        // aka we're taking the spot of a noop and not increasing count
-        table.noopCount -= 1;
-    }
-    else
-    {
-        // next empty spot is at the back
-        table.nextEmptySpot = table.count;
-        table.count += 1;
     }
     
     float curTime = CallaterCurrentTime();
+    uint64_t index = OrderedArrayPut(&table.nonRepeatInvokes, curTime + delay);
     
-    uint64_t nextSpot = table.nextEmptySpot;
-    table.funcs      [nextSpot] = func;
-    table.invokeTimes[nextSpot] = delay + curTime;
-    table.args       [nextSpot] = arg;
-    table.invokeData [nextSpot].repeatRate  = -delay;
-    table.invokeData [nextSpot].groupId     = groupId;
-    table.invokeData [nextSpot].pausedIndex = (uint64_t)-1;
-    if(table.invokeTimes[nextSpot] < table.minInvokeTime)
-    {
-        table.minInvokeTime = table.invokeTimes[nextSpot];
-    }
+    table.funcs     [index] = func;
+    table.args      [index] = arg;
+    table.invokeData[index].groupId = groupId;
+    table.minInvokeTime = table.nonRepeatInvokes.elms[table.nonRepeatInvokes.count - 1];
     
-    // assigning a new table.nextEmptySpot
-    if(table.noopCount == 0)
-    {
-        if(table.count >= table.cap)
-        {
-            table.nextEmptySpot = (uint64_t)-1;
-        }
-        else
-        {
-            table.nextEmptySpot = table.count;
-        }
-    }
-    else
-    {
-        if(table.count < table.cap)
-        {
-            table.nextEmptySpot = table.count;
-        }
-        else
-        {
-            uint64_t nextEmptySpot = (uint64_t)-1;
-            for(uint64_t i = 0 ; i < table.count ; i++)
-            {
-                if(table.funcs[i] == CallaterNoop)
-                {
-                    nextEmptySpot = i;
-                    break;
-                }
-            }
-            table.nextEmptySpot = nextEmptySpot;
-        }
-    }
-    return (CallaterRef){nextSpot};
+    return (CallaterRef){index};
 }
 
 CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate)
@@ -390,8 +351,14 @@ CallaterRef CallaterInvokeRepeat(void(*func)(void*, CallaterRef), void *arg, flo
 
 CallaterRef CallaterInvokeRepeatGID(void(*func)(void*, CallaterRef), void *arg, float firstDelay, float repeatRate, uint64_t groupId)
 {
-    CallaterRef ret = CallaterInvokeGID(func, arg, firstDelay, groupId);
-    CallaterSetRepeatRate(ret, repeatRate);
+    PQEntry newRepeatInvoke = {
+        .invokeTime = CallaterCurrentTime() + firstDelay,
+        .repeatRate = repeatRate,
+        .arg = arg,
+        .func = func,
+        .groupId = groupId
+    };
+    
     return ret;
 }
 
@@ -739,7 +706,7 @@ static void OrderedArrayRealloc(OrderedArray *oa, uint64_t newCap)
     oa->cap = newCap;
 }
 
-static void OrderedArrayPut(OrderedArray *oa, float elm)
+static uint64_t OrderedArrayPut(OrderedArray *oa, float elm)
 {
     uint64_t left = 0
     uint64_t right = oa->count;
@@ -760,12 +727,13 @@ static void OrderedArrayPut(OrderedArray *oa, float elm)
     
     oa->elms[left] = elm;
     oa->count++;
+    
+    return left;
 }
 
 static void OrderedArrayPop(OrderedArray *oa, uint64_t index)
 {
-    memmove(&oa->elms[index], &oa->elms[index + 1], (oa->count - index - 1) * sizeof(float));
-    oa->count--;
+    table.funcs[index] = CallaterNoop;
 }
 
 static void OrderedArrayFree(OrderedArray *oa)
