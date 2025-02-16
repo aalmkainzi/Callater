@@ -32,41 +32,61 @@
 #define CALLATER_FLT_AS_INT(f) \
 ((union{float asFloat; int32_t asInt;}){.asFloat = f}.asInt)
 
-typedef struct CallaterPausedInvoke
-{
-    CallaterRef ref;
-    float delay;
-} CallaterPausedInvoke;
-
-typedef struct CallaterPauseArray
-{
-    CallaterPausedInvoke *pausedInvokes;
-    uint64_t count, cap;
-} CallaterPauseArray;
-
 typedef struct CallaterInvokeData
 {
     uint64_t groupId;
-    uint64_t pausedIndex;
-    float repeatRate; // if neg, then no repeat
 } CallaterInvokeData;
+
+typedef struct OrderedArray
+{
+    uint64_t count, cap;
+    float *elms;
+    unsigned char offset;
+} OrderedArray;
+
+static void OrderedArrayInit(OrderedArray *oa, uint64_t initCap);
+static void OrderedArrayPut(OrderedArray *oa, float newVal);
+static void OrderedArrayPop(OrderedArray *oa, uint64_t index);
+static void OrderedArrayRealloc(OrderedArray *oa, uint64_t newCap);
+
+typedef struct PQEntry
+{
+    void(*func)(void*, CallaterRef);
+    void *arg;
+    
+    uint64_t groupId;
+    float repeatRate;
+    float invokeTime;
+} PQEntry;
+
+typedef struct PriorityQueue
+{
+    uint64_t count, cap;
+    PQEntry *elms;
+} PriorityQueue;
+
+static void PriorityQueueInit(PriorityQueue *pq, uint64_t initCap);
+static void PriorityQueuePush(PriorityQueue *pq, PQEntry elm);
+static PQEntry PriorityQueuePop(PriorityQueue *pq);
 
 typedef struct CallaterTable
 {
-    uint64_t cap;
-    uint64_t count;
-    uint64_t noopCount;
-    uint64_t nextEmptySpot;
-    void(**funcs)(void*, CallaterRef);
-    void **args;
     uint64_t startSec;
     uint64_t clockFreq;
-    float *invokeTimes;
+    
+    uint64_t cap;
+    uint64_t count;
+    
+    void(**funcs)(void*, CallaterRef);
+    void **args;
     CallaterInvokeData *invokeData;
-    CallaterPauseArray pausedInvokes;
+    
+    OrderedArray nonRepeatInvokes;
+    
+    PriorityQueue repeatInvokesQueue;
+    
     float minInvokeTime;
     float lastUpdated;
-    unsigned char delaysPtrOffset;
 } CallaterTable;
 
 static CallaterTable table = { 0 };
@@ -137,18 +157,16 @@ void CallaterInit()
     QueryPerformanceFrequency((void*) &table.clockFreq);
 #endif
     table.startSec = CallaterCurrentTime();
-    // table.count  = 0;
-    table.cap    = 64;
-    table.funcs  = calloc(table.cap, sizeof(*table.funcs));
-    table.args   = calloc(table.cap, sizeof(*table.args));
-    table.invokeTimes = CallaterAlignedAlloc(table.cap * sizeof(*table.invokeTimes), 32, &table.delaysPtrOffset);
-    table.invokeData = malloc(table.cap * sizeof(*table.invokeData));
-    table.pausedInvokes.cap = 32;
-    table.pausedInvokes.pausedInvokes = malloc(table.pausedInvokes.cap * sizeof(*table.pausedInvokes.pausedInvokes));
     
-    table.nextEmptySpot = 0;
-    table.count = 0;
+    uint64_t initCap = 64;
+    table.funcs  = calloc(initCap, sizeof(*table.funcs));
+    table.args   = calloc(initCap, sizeof(*table.args));
+    OrderedArrayInit(&table.nonRepeatInvokes, initCap);
+    table.invokeData = malloc(initCap * sizeof(*table.invokeData));
     table.minInvokeTime = INFINITY;
+    
+    table.cap = initCap;
+    table.count = 0;
 }
 
 static void CallaterNoop(void *arg, CallaterRef ref)
@@ -159,34 +177,27 @@ static void CallaterNoop(void *arg, CallaterRef ref)
 
 static void CallaterRemovePause(uint64_t index);
 
-static void CallaterPopInvoke(uint64_t idx)
-{
-    table.noopCount += (table.funcs[idx] != CallaterNoop);
-    table.funcs[idx] = CallaterNoop;
-    table.args[idx] = NULL;
-    table.invokeTimes[idx] = INFINITY;
-    table.invokeData[idx].groupId = (uint64_t)-1;
-    table.invokeData[idx].repeatRate = INFINITY;
-    
-    if(table.invokeData[idx].pausedIndex != (uint64_t)-1)
-    {
-        CallaterRemovePause(table.invokeData[idx].pausedIndex);
-    }
-}
+// static void CallaterPopInvoke(uint64_t idx)
+// {
+//     table.noopCount += (table.funcs[idx] != CallaterNoop);
+//     table.funcs[idx] = CallaterNoop;
+//     table.args[idx] = NULL;
+//     table.invokeTimes[idx] = INFINITY;
+//     table.invokeData[idx].groupId = (uint64_t)-1;
+//     table.invokeData[idx].repeatRate = INFINITY;
+//     
+//     if(table.invokeData[idx].pausedIndex != (uint64_t)-1)
+//     {
+//         CallaterRemovePause(table.invokeData[idx].pausedIndex);
+//     }
+// }
 
 static void CallaterReallocTable(uint64_t newCap)
 {
-    table.funcs  = realloc(table.funcs,  newCap * sizeof(*table.funcs));
-    table.args   = realloc(table.args,   newCap * sizeof(*table.args));
-    table.invokeTimes =
-    CallaterAlignedRealloc(
-        table.invokeTimes,
-        newCap    * sizeof(*table.invokeTimes),
-        table.cap * sizeof(*table.invokeTimes),
-        32,
-        &table.delaysPtrOffset
-    );
+    table.funcs      = realloc(table.funcs,      newCap * sizeof(*table.funcs));
+    table.args       = realloc(table.args,       newCap * sizeof(*table.args));
     table.invokeData = realloc(table.invokeData, newCap * sizeof(*table.invokeData));
+    OrderedArrayRealloc(&table.nonRepeatInvokes, newCap);
     table.cap = newCap;
 }
 
@@ -622,4 +633,145 @@ void CallaterDeinit()
     free(table.invokeData);
     free(table.pausedInvokes.pausedInvokes);
     table = (CallaterTable){0};
+}
+
+// PriorityQueue implementation:
+
+static void PriorityQueueInit(PriorityQueue *pq, uint64_t initCap)
+{
+    pq->count = 0;
+    pq->cap = initCap;
+    pq->elms = calloc(pq->cap + 1, sizeof(*pq->elms));
+}
+
+static void Swap(float *f1, float *f2)
+{
+    float tmp = *f1;
+    *f1 = *f2;
+    *f2 = tmp;
+}
+
+static void HUp(PriorityQueue *pq, uint64_t index)
+{
+    uint64_t parentIdx = index / 2;
+    while(index > 0 && pq->elms[parentIdx] > pq->elms[index])
+    {
+        Swap(&pq->elms[parentIdx], &pq->elms[index]);
+        index = parentIdx;
+        parentIdx = index / 2;
+    }
+}
+
+static void PriorityQueuePush(PriorityQueue *pq, PQEntry f)
+{
+    if(pq->count >= pq->cap - 1)
+    {
+        pq->cap *= 2;
+        pq->elms = realloc(pq->elms, (pq->cap + 1) * sizeof(*pq->elms));
+    }
+    pq->elms[pq->count + 1] = f;
+    HUp(pq, pq->count + 1);
+    pq->count += 1;
+}
+
+static void HDown(PriorityQueue *pq, uint64_t index)
+{
+    while(1)
+    {
+        uint64_t right = index * 2 + 1;
+        uint64_t left  = index * 2;
+        uint64_t smallest = index;
+        
+        if(right <= pq->count)
+        {
+            if(pq->elms[right] < pq->elms[smallest])
+            {
+                smallest = right;
+            }
+        }
+        if(left <= pq->count)
+        {
+            if(pq->elms[left] < pq->elms[smallest])
+            {
+                smallest = left;
+            }
+        }
+        
+        if(smallest != index)
+        {
+            Swap(&pq->elms[smallest], &pq->elms[index]);
+            index = smallest;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+static float PriorityQueuePop(PriorityQueue *pq)
+{
+    float minVal = pq->elms[1];
+    pq->elms[1] = pq->elms[pq->count];
+    pq->count -= 1;
+    HDown(pq, 1);
+    return minVal;
+}
+
+static void PriorityQueueFree(PriorityQueue *pq)
+{
+    free(pq->elms);
+}
+
+// OrderedArray implementation
+
+static void OrderedArrayInit(OrderedArray *oa, uint64_t initCap)
+{
+    oa->count = 0;
+    oa->cap = initCap;
+    oa->elms = CallaterAlignedAlloc(initCap, 16, &oa->offset);
+}
+
+static void OrderedArrayRealloc(OrderedArray *oa, uint64_t newCap)
+{
+    oa->elms = (float *)realloc(oa->elms, oa->cap * sizeof(float));
+    oa->elms = CallaterAlignedRealloc(oa->elms, newCap, oa->cap * sizeof(oa->elms[0]), 16, &oa->offset)
+    oa->cap = newCap;
+}
+
+static void OrderedArrayPut(OrderedArray *oa, float elm)
+{
+    uint64_t left = 0
+    uint64_t right = oa->count;
+    while (left < right)
+    {
+        uint64_t mid = left + (right - left) / 2;
+        if (oa->elms[mid] < elm)
+        {
+            left = mid + 1;
+        }
+        else
+        {
+            right = mid;
+        }
+    }
+    
+    memmove(&oa->elms[left + 1], &oa->elms[left], (oa->count - left) * sizeof(float));
+    
+    oa->elms[left] = elm;
+    oa->count++;
+}
+
+static void OrderedArrayPop(OrderedArray *oa, uint64_t index)
+{
+    memmove(&oa->elms[index], &oa->elms[index + 1], (oa->count - index - 1) * sizeof(float));
+    oa->count--;
+}
+
+static void OrderedArrayFree(OrderedArray *oa)
+{
+    free((unsigned char*) oa->elms - oa->offset);
+    oa->elms = NULL;
+    oa->count = 0;
+    oa->cap = 0;
 }
